@@ -14,7 +14,7 @@ export default function FilmRollScene({ roll }: { roll: FilmRoll }) {
       <div className="mb-2 px-6 text-center sm:px-12">
         <h2 className="font-heading text-lg tracking-wide">{roll.name}</h2>
         <p className="text-xs tracking-[0.15em] text-muted uppercase">
-          {roll.photos.length} photo{roll.photos.length === 1 ? "" : "s"} · drag to spin
+          {roll.photos.length} photo{roll.photos.length === 1 ? "" : "s"} · drag to pull the film out
         </p>
       </div>
       <div className="h-[420px] w-full touch-none cursor-grab active:cursor-grabbing">
