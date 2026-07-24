@@ -1,5 +1,5 @@
 import PhotoGrid from "@/components/PhotoGrid";
-import FilmRoll from "@/components/FilmRoll";
+import FilmRollScene from "@/components/FilmRollScene";
 import { getPhotos, getFilmRolls } from "@/lib/photos";
 
 export default function Home() {
@@ -23,7 +23,7 @@ export default function Home() {
         </div>
       )}
       {filmRolls.map((roll) => (
-        <FilmRoll key={roll.name} roll={roll} />
+        <FilmRollScene key={roll.name} roll={roll} />
       ))}
     </div>
   );

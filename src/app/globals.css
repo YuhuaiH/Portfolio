@@ -19,12 +19,3 @@ body {
   color: var(--foreground);
   font-family: var(--font-cardo), Georgia, serif;
 }
-
-.scrollbar-none {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.scrollbar-none::-webkit-scrollbar {
-  display: none;
-}
