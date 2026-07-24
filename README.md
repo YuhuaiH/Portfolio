@@ -63,6 +63,8 @@ The JSON file holds the photo's metadata:
 - `type` — `"film"` or `"digital"`
 - `filmRoll` — required when `type` is `"film"`, ignored otherwise
 
+On the homepage, `type: "digital"` photos appear in the masonry grid. `type: "film"` photos are grouped by `filmRoll` into horizontally scrolling filmstrips (one section per roll, newest roll first, photos ordered by `time` within the roll).
+
 Supported image extensions: `.jpg`, `.jpeg`, `.png`, `.webp`. `src/lib/photos.ts` reads this folder at build time, validates each JSON file, and reads the image's actual pixel dimensions — you don't need to specify width/height. A missing image, missing field, or invalid `type` fails the build with a message pointing at the offending file.
 
 ## Build

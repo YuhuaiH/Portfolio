@@ -74,3 +74,32 @@ export function getPhotos(): Photo[] {
 
   return photos.sort((a, b) => Date.parse(b.time) - Date.parse(a.time));
 }
+
+export type FilmRoll = {
+  name: string;
+  photos: Photo[];
+};
+
+export function getFilmRolls(photos: Photo[]): FilmRoll[] {
+  const rollMap = new Map<string, Photo[]>();
+
+  for (const photo of photos) {
+    if (photo.type !== "film" || !photo.filmRoll) continue;
+    const list = rollMap.get(photo.filmRoll);
+    if (list) {
+      list.push(photo);
+    } else {
+      rollMap.set(photo.filmRoll, [photo]);
+    }
+  }
+
+  const rolls = Array.from(rollMap.entries()).map(([name, rollPhotos]) => ({
+    name,
+    photos: rollPhotos.sort((a, b) => Date.parse(a.time) - Date.parse(b.time)),
+  }));
+
+  return rolls.sort((a, b) => {
+    const latest = (roll: Photo[]) => Math.max(...roll.map((p) => Date.parse(p.time)));
+    return latest(b.photos) - latest(a.photos);
+  });
+}

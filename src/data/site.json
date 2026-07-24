@@ -1,10 +1,10 @@
 {
-  "name": "Your Name",
+  "name": "Yuhuai",
   "role": "Photographer",
-  "bio": "A short bio goes here — who you are, what you shoot, and what draws you to it.",
-  "email": "you@example.com",
+  "bio": "This guy is too lazy to write his bio.",
+  "email": "yuhuaih6151@gmail.com",
   "social": [
-    { "label": "Instagram", "url": "https://instagram.com/" },
-    { "label": "LinkedIn", "url": "https://linkedin.com/" }
+    { "label": "Instagram", "url": "https://instagram.com/yuhuaih" },
+    { "label": "LinkedIn", "url": "https://www.linkedin.com/in/yuhuai-huang-07980b205/" }
   ]
 }
