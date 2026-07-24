@@ -8,15 +8,21 @@ const links = [
 
 export default function SiteHeader() {
   return (
-    <header className="flex items-center justify-between px-6 py-6 sm:px-12">
-      <Link href="/" className="text-sm font-semibold tracking-widest uppercase">
+    <header className="flex flex-col items-center gap-4 px-6 py-12 text-center sm:py-16">
+      <Link
+        href="/"
+        className="font-heading text-3xl tracking-wide sm:text-4xl"
+      >
         Your Name
       </Link>
-      <nav className="flex gap-6 text-sm">
-        {links.map((link) => (
-          <Link key={link.href} href={link.href} className="hover:opacity-60">
-            {link.label}
-          </Link>
+      <nav className="flex items-center text-xs tracking-[0.2em] uppercase text-muted">
+        {links.map((link, i) => (
+          <span key={link.href} className="flex items-center">
+            {i > 0 && <span className="mx-3 text-muted">/</span>}
+            <Link href={link.href} className="hover:text-foreground">
+              {link.label}
+            </Link>
+          </span>
         ))}
       </nav>
     </header>
