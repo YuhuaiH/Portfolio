@@ -1,4 +1,5 @@
 import Link from "next/link";
+import site from "@/data/site.json";
 
 const links = [
   { href: "/", label: "Work" },
@@ -13,7 +14,7 @@ export default function SiteHeader() {
         href="/"
         className="font-heading text-3xl tracking-wide sm:text-4xl"
       >
-        Your Name
+        {site.name}
       </Link>
       <nav className="flex items-center text-xs tracking-[0.2em] uppercase text-muted">
         {links.map((link, i) => (

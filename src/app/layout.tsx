@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cardo, Playfair_Display } from "next/font/google";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import site from "@/data/site.json";
 import "./globals.css";
 
 const cardo = Cardo({
@@ -16,8 +17,8 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Your Name — Photography",
-  description: "Photography portfolio of Your Name.",
+  title: `${site.name} — ${site.role}`,
+  description: `${site.role} portfolio of ${site.name}.`,
 };
 
 export default function RootLayout({

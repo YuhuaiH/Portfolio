@@ -11,6 +11,25 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+## Site info
+
+Your name, bio, email, and social links live in [`src/data/site.json`](src/data/site.json) and are used across the header, footer, about, contact, and page metadata:
+
+```json
+{
+  "name": "Your Name",
+  "role": "Photographer",
+  "bio": "A short bio goes here...",
+  "email": "you@example.com",
+  "social": [
+    { "label": "Instagram", "url": "https://instagram.com/" },
+    { "label": "LinkedIn", "url": "https://linkedin.com/" }
+  ]
+}
+```
+
+Edit the values and every page picks them up automatically.
+
 ## Adding photos
 
 Each photo lives in `public/photos/` as an image file plus a JSON sidecar with the same base name, e.g.:

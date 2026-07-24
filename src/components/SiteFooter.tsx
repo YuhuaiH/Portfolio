@@ -1,16 +1,13 @@
-const socialLinks = [
-  { href: "https://instagram.com/", label: "Instagram" },
-  { href: "https://linkedin.com/", label: "LinkedIn" },
-];
+import site from "@/data/site.json";
 
 export default function SiteFooter() {
   return (
     <footer className="flex flex-col items-center gap-3 px-6 py-12 text-center text-xs tracking-[0.15em] text-muted uppercase">
       <div className="flex gap-4">
-        {socialLinks.map((link) => (
+        {site.social.map((link) => (
           <a
-            key={link.href}
-            href={link.href}
+            key={link.url}
+            href={link.url}
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-foreground"
@@ -19,7 +16,9 @@ export default function SiteFooter() {
           </a>
         ))}
       </div>
-      <div>© {new Date().getFullYear()} Your Name</div>
+      <div>
+        © {new Date().getFullYear()} {site.name}
+      </div>
     </footer>
   );
 }

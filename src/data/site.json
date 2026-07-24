@@ -1,0 +1,10 @@
+{
+  "name": "Your Name",
+  "role": "Photographer",
+  "bio": "A short bio goes here — who you are, what you shoot, and what draws you to it.",
+  "email": "you@example.com",
+  "social": [
+    { "label": "Instagram", "url": "https://instagram.com/" },
+    { "label": "LinkedIn", "url": "https://linkedin.com/" }
+  ]
+}

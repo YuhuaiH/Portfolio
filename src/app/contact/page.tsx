@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import site from "@/data/site.json";
 
 export const metadata: Metadata = {
-  title: "Contact — Your Name",
+  title: `Contact — ${site.name}`,
 };
 
 export default function Contact() {
@@ -11,10 +12,10 @@ export default function Contact() {
       <p className="mt-6 text-sm leading-relaxed text-muted">
         For bookings and inquiries, reach out at{" "}
         <a
-          href="mailto:you@example.com"
+          href={`mailto:${site.email}`}
           className="underline underline-offset-2 hover:text-foreground"
         >
-          you@example.com
+          {site.email}
         </a>
         .
       </p>
