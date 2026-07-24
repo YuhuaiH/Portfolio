@@ -63,7 +63,14 @@ The JSON file holds the photo's metadata:
 - `type` — `"film"` or `"digital"`
 - `filmRoll` — required when `type` is `"film"`, ignored otherwise
 
-On the homepage, `type: "digital"` photos appear in the masonry grid. `type: "film"` photos are grouped by `filmRoll` into a 3D 35mm film canister, built with Three.js / React Three Fiber ([`src/components/FilmReel3D.tsx`](src/components/FilmReel3D.tsx)). Drag it to physically pull the strip out of the canister and reveal the frames (newest roll first, photos ordered by `time` within the roll); the camera pans to follow the leading edge as more strip is pulled out. Click a revealed frame to open a detail popup with its name, date, and film roll ([`FilmRollScene.tsx`](src/components/FilmRollScene.tsx), which also holds the modal). It renders client-side only (`next/dynamic` with `ssr: false`) since WebGL isn't available during static export.
+On the homepage, `type: "digital"` photos appear in the masonry grid. `type: "film"` photos are grouped by `filmRoll` into 3D 35mm film canisters, all sitting together in one shared Three.js / React Three Fiber scene ([`src/components/FilmScene.tsx`](src/components/FilmScene.tsx)):
+
+1. **Overview** — every roll's canister sits in one wide shot, each peeking a preview frame.
+2. **Select** — click a canister (or its peeking strip) and the camera flies in to focus on that roll. A "← All rolls" button (or the Escape key) flies back out.
+3. **Pull** — once focused, drag to physically pull the strip out of the canister, revealing its frames (newest roll first, photos ordered by `time` within the roll); the camera pans to follow the leading edge.
+4. **Inspect** — click a revealed frame to open a detail popup with its name, date, and film roll.
+
+[`FilmRollsExplorer.tsx`](src/components/FilmRollsExplorer.tsx) holds the selection/heading state and the info modal, and lazy-loads `FilmScene` client-side only (`next/dynamic` with `ssr: false`) since WebGL isn't available during static export.
 
 Supported image extensions: `.jpg`, `.jpeg`, `.png`, `.webp`. `src/lib/photos.ts` reads this folder at build time, validates each JSON file, and reads the image's actual pixel dimensions — you don't need to specify width/height. A missing image, missing field, or invalid `type` fails the build with a message pointing at the offending file.
 
