@@ -501,7 +501,7 @@ function SceneController({
   onSelectRoll: (index: number | null) => void;
   onPhotoClick: (photo: Photo) => void;
 }) {
-  const { camera, gl, scene } = useThree();
+  const { camera, gl, scene, size } = useThree();
   const draggingRef = useRef(false);
   const startClientRef = useRef({ x: 0, y: 0 });
   const startPulledRef = useRef(0);
@@ -644,11 +644,28 @@ function SceneController({
       rs.clipPlane.constant = rs.baseX + rs.displayPulledRef.current;
     }
 
+    // How far back the camera needs to sit to fit a given half-width
+    // depends on the canvas's current aspect ratio, not just a constant —
+    // the old fixed multipliers here were tuned against a wide desktop
+    // canvas and clipped photos off both edges on a narrow phone screen,
+    // where the same vertical FOV covers much less horizontal ground.
+    const vFov = THREE.MathUtils.degToRad(
+      camera instanceof THREE.PerspectiveCamera ? camera.fov : 45
+    );
+    const aspect = size.width / Math.max(size.height, 1);
+    const camZForHalfWidth = (halfWidth: number, minZ: number) =>
+      Math.max(halfWidth / (Math.tan(vFov / 2) * Math.max(aspect, 0.001)), minZ);
+
     if (idx === null) {
       const last = rollStates[rollStates.length - 1];
-      const overviewWidth = last.baseX + last.minPulled;
-      const targetX = overviewWidth / 2;
-      const camZ = 4.5 + overviewWidth * 0.32;
+      // The first canister's own body sits partly to the left of x=0 (its
+      // center), so the true left edge isn't 0 — leaving it out understated
+      // the width and skewed the centering enough to clip that roll's edge
+      // on narrow viewports.
+      const leftEdge = -CAN_RADIUS;
+      const rightEdge = last.baseX + last.minPulled;
+      const targetX = (leftEdge + rightEdge) / 2;
+      const camZ = camZForHalfWidth((rightEdge - leftEdge) / 2 + 1.1, 4.5);
       camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetX, CAMERA_OVERVIEW_LERP);
       camera.position.y = THREE.MathUtils.lerp(camera.position.y, 1.5, CAMERA_OVERVIEW_LERP);
       camera.position.z = THREE.MathUtils.lerp(camera.position.z, camZ, CAMERA_OVERVIEW_LERP);
@@ -657,7 +674,7 @@ function SceneController({
       const rs = rollStates[idx];
       const display = rs.clipPlane.constant - rs.baseX;
       const targetX = rs.baseX + display / 2;
-      const camZ = 3.1 + Math.min(rs.totalLength, 6) * 0.11;
+      const camZ = camZForHalfWidth(Math.min(rs.totalLength, 6) / 2 + 0.5, 3.1);
       camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetX, CAMERA_FOCUS_LERP);
       camera.position.y = THREE.MathUtils.lerp(camera.position.y, 0.75, CAMERA_FOCUS_LERP);
       camera.position.z = THREE.MathUtils.lerp(camera.position.z, camZ, CAMERA_FOCUS_LERP);
