@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import type { FilmRoll, Photo } from "@/lib/photos";
@@ -10,27 +10,54 @@ const FilmScene = dynamic(() => import("./FilmScene"), {
   loading: () => <div className="h-[560px] w-full animate-pulse bg-white/5 sm:h-[640px]" />,
 });
 
+const MODAL_TRANSITION_MS = 220;
+
+function formatDate(time: string) {
+  return new Date(time).toLocaleDateString(undefined, { year: "numeric", month: "long" });
+}
+
 function PhotoInfoModal({ photo, onClose }: { photo: Photo; onClose: () => void }) {
+  const [visible, setVisible] = useState(false);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setVisible(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+    };
+  }, []);
+
+  function handleClose() {
+    setVisible(false);
+    closeTimeoutRef.current = setTimeout(onClose, MODAL_TRANSITION_MS);
+  }
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") handleClose();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const date = new Date(photo.time).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "long",
-  });
+  const date = formatDate(photo.time);
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-6 backdrop-blur-sm"
-      onClick={onClose}
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-6 backdrop-blur-sm transition-opacity duration-200 ease-out ${
+        visible ? "opacity-100" : "opacity-0"
+      }`}
+      onClick={handleClose}
     >
       <div
-        className="w-full max-w-sm border border-white/15 bg-black p-6 text-center"
+        className={`w-full max-w-sm border border-white/15 bg-black p-6 text-center transition-all duration-200 ease-out ${
+          visible ? "translate-y-0 scale-100 opacity-100" : "translate-y-2 scale-95 opacity-0"
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         <Image
@@ -45,7 +72,7 @@ function PhotoInfoModal({ photo, onClose }: { photo: Photo; onClose: () => void 
           {date} · {photo.type === "film" ? photo.filmRoll : "Digital"}
         </p>
         <button
-          onClick={onClose}
+          onClick={handleClose}
           className="mt-5 text-xs tracking-[0.15em] text-muted uppercase hover:text-foreground"
         >
           Close
@@ -83,6 +110,9 @@ export default function FilmRollsExplorer({ filmRolls }: { filmRolls: FilmRoll[]
               ← All rolls
             </button>
             <h2 className="font-heading text-lg tracking-wide">{focused.name}</h2>
+            <p className="text-[11px] tracking-[0.15em] text-muted/70 uppercase">
+              {formatDate(focused.time)}
+            </p>
             <p className="text-xs tracking-[0.15em] text-muted uppercase">
               {focused.photos.length} photo{focused.photos.length === 1 ? "" : "s"} · drag to pull
               the film out · click a frame for details

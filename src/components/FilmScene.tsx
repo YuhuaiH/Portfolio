@@ -2,25 +2,71 @@
 
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useTexture } from "@react-three/drei";
+import { Html, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import type { FilmRoll, Photo } from "@/lib/photos";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
-const CAN_RADIUS = 0.55;
-const CAN_HEIGHT = 1.05;
+const CAN_RADIUS = 0.34;
+// ISO 1007 (135 / 35mm cartridge) reference dimensions, in mm, scaled into
+// scene units via MM_TO_UNIT. CAN_RADIUS anchors the real 12.5mm body
+// radius (25mm diameter) since it's load-bearing for roll spacing
+// elsewhere in this file — every other canister dimension derives from it,
+// so the whole shape stays true to the real proportions.
+const MM_TO_UNIT = CAN_RADIUS / 12.5;
+const CAN_BODY_H = 39.4 * MM_TO_UNIT;
+const CAN_TOP_SPOOL_H = 4.5 * MM_TO_UNIT;
+const CAN_TOP_SPOOL_R = (10.0 / 2) * MM_TO_UNIT;
+const CAN_BOTTOM_SPOOL_H = 3.4 * MM_TO_UNIT;
+const CAN_BOTTOM_SPOOL_R = (10.0 / 2) * MM_TO_UNIT;
+const CAN_LIP_EXTENT = 5.5 * MM_TO_UNIT;
 const FRAME_W = 1.5;
 const FRAME_H = 1.0;
 const FRAME_GAP = 0.18;
 const FRAME_SPACING = FRAME_W + FRAME_GAP;
+// Real 135 film: a 35mm-wide strip split into a 24mm image area (68.6%)
+// down the middle, flanked by 5.5mm perforation margins (31.4% total) —
+// this is what keeps the photo itself clear of the sprocket holes instead
+// of letting it grow tall enough to run into them.
+const FILM_WIDTH_TO_UNIT = FRAME_H / 35;
+const PERF_MARGIN_H = 5.5 * FILM_WIDTH_TO_UNIT;
 const PHOTO_MAX_W = 1.25;
-const PHOTO_MAX_H = 0.82;
-const SLOT_X = CAN_RADIUS + 0.05;
-const HOLES_PER_FRAME = 3;
-const ROLL_MARGIN = 2.2;
+const PHOTO_MAX_H = 24 * FILM_WIDTH_TO_UNIT;
+const SLOT_X = CAN_RADIUS + CAN_LIP_EXTENT + 0.03;
+// Real 135-format perforations: 2.8mm × 1.9mm rectangles on a 4.74mm pitch,
+// scaled against the 36mm real frame width mapping onto our FRAME_W so the
+// holes run continuously down the whole strip at the correct spacing,
+// rather than a fixed count squeezed into each frame.
+const FILM_MM_TO_UNIT = FRAME_W / 36;
+const SPROCKET_PITCH = 4.74 * FILM_MM_TO_UNIT;
+const SPROCKET_W = 2.8 * FILM_MM_TO_UNIT;
+const SPROCKET_H = 1.9 * FILM_MM_TO_UNIT;
+const ROLL_GAP = 1.1;
+const BREATH_AMPLITUDE = 0.25;
 const CLICK_DRAG_THRESHOLD = 6;
 const DRAG_SCALE = 0.006;
+// Extending (selecting) stays slow and deliberate, ~2.5s to settle — the
+// camera is tracking the growing edge in a tight zoom the whole time, which
+// reads as plenty quick on its own.
+const PULL_EXTEND_LERP = 0.02;
+// Retracting (deselecting) has no such camera magnification — the camera
+// has already cut to the wide overview — so it needs its own faster pace,
+// ~1s to settle, to feel like it matches the extend rather than dragging.
+const PULL_RETRACT_LERP = 0.05;
+// How far a non-focused roll sinks to get out of the focused camera's much
+// tighter frustum — well clear of it even at the closest zoom (camZ ~3.1).
+const PARK_Y_OFFSET = -7;
+// Deliberately slower than PULL_RETRACT_LERP: on deselect, a parked
+// neighbor must still be out of the way for as long as the just-deselected
+// roll's strip is still retracting toward it, or the two overlap mid-glide.
+const PARK_LERP = 0.04;
+// Following the focused roll's growing edge is snappy and reactive...
+const CAMERA_FOCUS_LERP = 0.08;
+// ...but snapping straight to the wide overview target the instant you
+// deselect made the pan back feel abrupt — a much gentler ease here spreads
+// that big jump in target position/zoom out instead of lurching toward it.
+const CAMERA_OVERVIEW_LERP = 0.035;
 
 type RollState = {
   roll: FilmRoll;
@@ -30,16 +76,22 @@ type RollState = {
   minPulled: number;
   clipPlane: THREE.Plane;
   pulledRef: { current: number };
+  displayPulledRef: { current: number };
   hasInteractedRef: { current: boolean };
 };
 
 function buildRollStates(filmRolls: FilmRoll[]): RollState[] {
-  let cursor = 0;
+  // Every canister sits at a fixed spacing apart. Unfocused rolls always
+  // rest at minPulled, so that (not the longest roll's full unrolled
+  // length) is what determines how tightly rolls can sit during selection —
+  // a fully pulled-out strip only exists for the one roll in focus, whose
+  // neighbors are out of frame by the time the camera zooms in on it.
+  const minPulled = SLOT_X + FRAME_GAP + FRAME_SPACING * 0.35;
+  const spacing = minPulled + ROLL_GAP;
+
   return filmRolls.map((roll, index) => {
     const totalLength = SLOT_X + FRAME_GAP + roll.photos.length * FRAME_SPACING + FRAME_GAP;
-    const minPulled = SLOT_X + FRAME_GAP + FRAME_SPACING * 0.35;
-    const baseX = cursor;
-    cursor += totalLength + ROLL_MARGIN;
+    const baseX = index * spacing;
 
     return {
       roll,
@@ -49,6 +101,7 @@ function buildRollStates(filmRolls: FilmRoll[]): RollState[] {
       minPulled,
       clipPlane: new THREE.Plane(new THREE.Vector3(-1, 0, 0), baseX + minPulled),
       pulledRef: { current: minPulled },
+      displayPulledRef: { current: minPulled },
       hasInteractedRef: { current: false },
     };
   });
@@ -61,26 +114,248 @@ function fitContain(aspect: number, maxW: number, maxH: number) {
     : { w: maxH * aspect, h: maxH };
 }
 
-function Canister({ rollIndex }: { rollIndex: number }) {
+// A faint mottled roughness variation for the canister's glossy black
+// plastic parts (cap, shoulder, base) — just enough to avoid a perfectly
+// flat CG sheen, without reading as brushed metal.
+function createPlasticRoughnessMap() {
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  ctx.fillStyle = "#363636";
+  ctx.fillRect(0, 0, size, size);
+  for (let i = 0; i < 500; i++) {
+    const shade = Math.random() > 0.5 ? 255 : 0;
+    ctx.fillStyle = `rgba(${shade},${shade},${shade},${Math.random() * 0.06})`;
+    ctx.beginPath();
+    ctx.arc(Math.random() * size, Math.random() * size, 2 + Math.random() * 10, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(2, 2);
+  return texture;
+}
+
+// Repeating film-base texture for the ribbon — subtle grain plus a thin
+// printed tick near each edge, like the faint manufacturer marks a real
+// negative's base carries, instead of one flat solid color.
+function createFilmBaseTexture() {
+  const w = 128;
+  const h = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  ctx.fillStyle = "#221d17";
+  ctx.fillRect(0, 0, w, h);
+  for (let i = 0; i < 300; i++) {
+    ctx.fillStyle = `rgba(0,0,0,${Math.random() * 0.15})`;
+    ctx.fillRect(Math.random() * w, Math.random() * h, 1.5, 1.5);
+  }
+  for (let i = 0; i < 80; i++) {
+    ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.03})`;
+    ctx.fillRect(Math.random() * w, Math.random() * h, 1, 1);
+  }
+
+  ctx.fillStyle = "rgba(255,255,255,0.06)";
+  ctx.fillRect(w * 0.46, h * 0.05, w * 0.08, h * 0.045);
+  ctx.fillRect(w * 0.46, h * 0.905, w * 0.08, h * 0.045);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+// Cylindrical paper-label wrap for the canister body — the roll's name,
+// date, and a "35mm FILM" line, wrapping around the can the way a real
+// canister's label does, rather than sitting flat on top of it.
+function createLabelWrapTexture(name: string, time: string) {
+  const w = 640;
+  const h = 500;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  // Vertical band layout — a narrow color spine plus a wider main field,
+  // both running the full height, with the text rotated to read up the
+  // can rather than around it. That's how the reference labels are laid
+  // out; a horizontal band split read as facing the wrong way.
+  const stripeW = w * 0.24;
+  ctx.fillStyle = "#2a5599";
+  ctx.fillRect(0, 0, stripeW, h);
+  ctx.fillStyle = "#efe8d8";
+  ctx.fillRect(stripeW, 0, w - stripeW, h);
+
+  ctx.strokeStyle = "rgba(20,18,16,0.4)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(stripeW, 0);
+  ctx.lineTo(stripeW, h);
+  ctx.stroke();
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  // "35mm FILM", rotated upright in the spine.
+  ctx.save();
+  ctx.translate(stripeW / 2, h / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.font = "bold 30px Arial, Helvetica, sans-serif";
+  ctx.fillStyle = "#f5ede0";
+  ctx.fillText("35mm FILM", 0, 0);
+  ctx.restore();
+
+  // Roll name, rotated upright, filling most of the main field's height.
+  ctx.save();
+  ctx.translate(stripeW + (w - stripeW) * 0.4, h / 2);
+  ctx.rotate(-Math.PI / 2);
+  let nameSize = 92;
+  const upperName = name.toUpperCase();
+  ctx.font = `bold ${nameSize}px Arial, Helvetica, sans-serif`;
+  while (ctx.measureText(upperName).width > h * 0.88 && nameSize > 34) {
+    nameSize -= 2;
+    ctx.font = `bold ${nameSize}px Arial, Helvetica, sans-serif`;
+  }
+  ctx.fillStyle = "#1c1712";
+  ctx.fillText(upperName, 0, 0);
+  ctx.restore();
+
+  // Date, rotated the same way, in its own column near the right edge.
+  ctx.save();
+  ctx.translate(stripeW + (w - stripeW) * 0.82, h / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.font = "26px Arial, Helvetica, sans-serif";
+  ctx.fillStyle = "rgba(28,23,18,0.65)";
+  ctx.fillText(formatRollDate(time).toUpperCase(), 0, 0);
+  ctx.restore();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.repeat.set(2, 1);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function formatRollDate(time: string) {
+  return new Date(time).toLocaleDateString(undefined, { year: "numeric", month: "long" });
+}
+
+function Canister({
+  rollIndex,
+  name,
+  time,
+  showLabel,
+}: {
+  rollIndex: number;
+  name: string;
+  time: string;
+  showLabel: boolean;
+}) {
   const userData = { rollIndex };
+  const labelTexture = useMemo(() => createLabelWrapTexture(name, time), [name, time]);
+  const plasticRoughness = useMemo(() => createPlasticRoughnessMap(), []);
+
+  // ISO 1007: a single 25mm-diameter body (39.4mm tall) with narrower
+  // 10mm-diameter spool extensions projecting above (4.5mm) and below
+  // (3.4mm) it — not a tapered "shoulder" down to a separate cap. Only the
+  // top portion of the body itself is bare black plastic; the rest is
+  // labeled. The body is centered on y=0 so its middle — where the film
+  // actually runs — lines up with the strip beside it, regardless of the
+  // (slightly unequal) spool extensions above and below.
+  const bodyLabelFraction = 0.78;
+  const bodyLabelH = CAN_BODY_H * bodyLabelFraction;
+  const bodyCapH = CAN_BODY_H - bodyLabelH;
+  const bottom = -(CAN_BOTTOM_SPOOL_H + CAN_BODY_H / 2);
+  const bottomSpoolY = bottom + CAN_BOTTOM_SPOOL_H / 2;
+  const bodyBottom = bottom + CAN_BOTTOM_SPOOL_H;
+  const bodyY = bodyBottom + CAN_BODY_H / 2; // the whole body's center — ~0, by construction
+  const bodyLabelY = bodyBottom + bodyLabelH / 2;
+  const bodyCapY = bodyBottom + bodyLabelH + bodyCapH / 2;
+  const topSpoolY = bodyBottom + CAN_BODY_H + CAN_TOP_SPOOL_H / 2;
+  const topSurfaceY = topSpoolY + CAN_TOP_SPOOL_H / 2;
+  const slotH = CAN_BODY_H * 0.5;
+
+  const plastic = (roughness = 0.3) => (
+    <meshStandardMaterial
+      color="#141414"
+      roughnessMap={plasticRoughness}
+      roughness={roughness}
+      metalness={0.15}
+    />
+  );
+
   return (
     <group>
-      <mesh userData={userData}>
-        <cylinderGeometry args={[CAN_RADIUS, CAN_RADIUS, CAN_HEIGHT, 32]} />
-        <meshStandardMaterial color="#2c2c2c" roughness={0.45} metalness={0.2} />
+      {/* Bottom spool extension. */}
+      <mesh position={[0, bottomSpoolY, 0]} userData={userData}>
+        <cylinderGeometry args={[CAN_BOTTOM_SPOOL_R, CAN_BOTTOM_SPOOL_R, CAN_BOTTOM_SPOOL_H, 24]} />
+        {plastic()}
       </mesh>
-      <mesh position={[0, CAN_HEIGHT / 2 + 0.04, 0]} userData={userData}>
-        <cylinderGeometry args={[CAN_RADIUS * 0.82, CAN_RADIUS * 0.82, 0.08, 32]} />
-        <meshStandardMaterial color="#e8e3d5" roughness={0.55} metalness={0.05} />
+      {/* Main body, labeled portion. */}
+      <mesh position={[0, bodyLabelY, 0]} userData={userData}>
+        <cylinderGeometry args={[CAN_RADIUS, CAN_RADIUS, bodyLabelH, 48]} />
+        <meshStandardMaterial
+          map={labelTexture}
+          color={labelTexture ? "#ffffff" : "#e8e3d5"}
+          roughness={0.8}
+          metalness={0.05}
+        />
       </mesh>
-      <mesh position={[0, CAN_HEIGHT / 2 + 0.14, 0]} userData={userData}>
-        <cylinderGeometry args={[0.1, 0.1, 0.12, 16]} />
-        <meshStandardMaterial color="#4a4a4a" roughness={0.5} metalness={0.3} />
+      {/* Main body, bare plastic portion near the top — same diameter as
+          the labeled section, no taper. */}
+      <mesh position={[0, bodyCapY, 0]} userData={userData}>
+        <cylinderGeometry args={[CAN_RADIUS, CAN_RADIUS, bodyCapH, 48]} />
+        {plastic()}
       </mesh>
-      <mesh position={[CAN_RADIUS - 0.02, 0, 0]} userData={userData}>
-        <boxGeometry args={[0.08, FRAME_H * 0.55, 0.06]} />
-        <meshStandardMaterial color="#050505" roughness={0.8} />
+      {/* Top spool extension. */}
+      <mesh position={[0, topSpoolY, 0]} userData={userData}>
+        <cylinderGeometry args={[CAN_TOP_SPOOL_R, CAN_TOP_SPOOL_R, CAN_TOP_SPOOL_H, 24]} />
+        {plastic(0.25)}
       </mesh>
+      {/* Spool hole — a flat dark disc right at the top face reads as a
+          recessed opening without needing real recessed geometry. */}
+      <mesh position={[0, topSurfaceY + 0.003, 0]} userData={userData}>
+        <cylinderGeometry args={[CAN_TOP_SPOOL_R * 0.55, CAN_TOP_SPOOL_R * 0.55, 0.006, 20]} />
+        <meshStandardMaterial color="#000000" roughness={0.8} />
+      </mesh>
+      {/* Light-trap slot, where the strip exits — a darker felt-lined
+          opening set into a slightly larger surround, extending out
+          tangentially by the spec's 5.5mm lip. */}
+      <mesh position={[CAN_RADIUS + CAN_LIP_EXTENT / 2 - 0.015, bodyY, 0]} userData={userData}>
+        <boxGeometry args={[CAN_LIP_EXTENT + 0.03, slotH * 1.1, 0.11]} />
+        <meshStandardMaterial color="#2e2c2a" roughness={0.95} />
+      </mesh>
+      <mesh position={[CAN_RADIUS + CAN_LIP_EXTENT / 2 - 0.005, bodyY, 0]} userData={userData}>
+        <boxGeometry args={[CAN_LIP_EXTENT - 0.01, slotH, 0.08]} />
+        <meshStandardMaterial color="#040404" roughness={0.9} />
+      </mesh>
+      <Html position={[0, topSurfaceY + 0.2, 0]} center style={{ pointerEvents: "none" }}>
+        <div
+          className={`flex flex-col items-center whitespace-nowrap rounded-2xl border border-white/25 bg-black/60 px-3 py-1.5 text-center backdrop-blur-sm transition-opacity duration-300 ${
+            showLabel ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          <span className="font-heading text-[11px] uppercase tracking-[0.15em] text-white/90">
+            {name}
+          </span>
+          <span className="text-[9px] uppercase tracking-[0.15em] text-white/50">
+            {formatRollDate(time)}
+          </span>
+        </div>
+      </Html>
     </group>
   );
 }
@@ -99,13 +374,24 @@ function Frame({
   const texture = useTexture(`${BASE_PATH}${photo.src}`);
   texture.colorSpace = THREE.SRGBColorSpace;
 
-  const { w, h } = useMemo(
-    () => fitContain(photo.width / photo.height, PHOTO_MAX_W, PHOTO_MAX_H),
-    [photo.width, photo.height]
-  );
+  // Portrait photos get turned sideways to fill the same landscape frame
+  // slot as everything else on the strip — fit against the swapped box so
+  // the un-rotated plane is sized for a 90° turn, then actually turn it.
+  // The detail popup (a plain <Image>) is unaffected and shows it upright.
+  const isPortrait = photo.height > photo.width;
+  const { w, h } = useMemo(() => {
+    const aspect = photo.width / photo.height;
+    return isPortrait
+      ? fitContain(aspect, PHOTO_MAX_H, PHOTO_MAX_W)
+      : fitContain(aspect, PHOTO_MAX_W, PHOTO_MAX_H);
+  }, [photo.width, photo.height, isPortrait]);
 
   return (
-    <mesh position={[x, 0, 0.03]} userData={{ photo, rollIndex }}>
+    <mesh
+      position={[x, 0, 0.03]}
+      rotation={isPortrait ? [0, 0, Math.PI / 2] : [0, 0, 0]}
+      userData={{ photo, rollIndex }}
+    >
       <planeGeometry args={[w, h]} />
       <meshBasicMaterial map={texture} toneMapped={false} clippingPlanes={[clipPlane]} />
     </mesh>
@@ -115,24 +401,32 @@ function Frame({
 function FilmStrip({ rs }: { rs: RollState }) {
   const { roll, clipPlane, totalLength, index } = rs;
   const ribbonLength = totalLength - SLOT_X;
+  const holeY = FRAME_H / 2 - PERF_MARGIN_H / 2;
 
+  const ribbonTexture = useMemo(() => {
+    const t = createFilmBaseTexture();
+    if (t) t.repeat.set(ribbonLength / 0.3, 1);
+    return t;
+  }, [ribbonLength]);
+
+  // Perforations run continuously down the whole strip at the real pitch —
+  // not clustered per frame with the gaps skipped — the way an actual
+  // negative's sprocket holes do.
   const holeXs = useMemo(() => {
     const xs: number[] = [];
-    for (let i = 0; i < roll.photos.length + 1; i++) {
-      const base = SLOT_X + FRAME_GAP + i * FRAME_SPACING;
-      for (let j = 0; j < HOLES_PER_FRAME; j++) {
-        xs.push(base + ((j + 0.5) * FRAME_W) / HOLES_PER_FRAME);
-      }
+    for (let x = SLOT_X + SPROCKET_PITCH / 2; x < totalLength; x += SPROCKET_PITCH) {
+      xs.push(x);
     }
     return xs;
-  }, [roll.photos.length]);
+  }, [totalLength]);
 
   return (
     <group>
       <mesh position={[SLOT_X + ribbonLength / 2, 0, 0]} userData={{ rollIndex: index }}>
         <boxGeometry args={[ribbonLength, FRAME_H, 0.04]} />
         <meshStandardMaterial
-          color="#221d17"
+          map={ribbonTexture}
+          color={ribbonTexture ? "#ffffff" : "#221d17"}
           roughness={0.6}
           metalness={0.05}
           clippingPlanes={[clipPlane]}
@@ -141,14 +435,14 @@ function FilmStrip({ rs }: { rs: RollState }) {
 
       {holeXs.map((x) => (
         <group key={x}>
-          <mesh position={[x, FRAME_H / 2 - 0.08, 0.025]} userData={{ rollIndex: index }}>
-            <boxGeometry args={[0.07, 0.05, 0.02]} />
-            <meshStandardMaterial color="#050505" clippingPlanes={[clipPlane]} />
-          </mesh>
-          <mesh position={[x, -(FRAME_H / 2 - 0.08), 0.025]} userData={{ rollIndex: index }}>
-            <boxGeometry args={[0.07, 0.05, 0.02]} />
-            <meshStandardMaterial color="#050505" clippingPlanes={[clipPlane]} />
-          </mesh>
+          {[holeY, -holeY].map((y) => (
+            // A light, punched-through rectangle reads clearly against the
+            // dark ribbon — a dark hole on a dark ribbon barely showed up.
+            <mesh key={y} position={[x, y, 0.025]} userData={{ rollIndex: index }}>
+              <boxGeometry args={[SPROCKET_W, SPROCKET_H, 0.015]} />
+              <meshStandardMaterial color="#cabfa8" roughness={0.7} clippingPlanes={[clipPlane]} />
+            </mesh>
+          ))}
         </group>
       ))}
 
@@ -165,10 +459,30 @@ function FilmStrip({ rs }: { rs: RollState }) {
   );
 }
 
-function RollGroup({ rs }: { rs: RollState }) {
+function RollGroup({ rs, focusedIndex }: { rs: RollState; focusedIndex: number | null }) {
+  // Rolls sit close together, so once one is selected the others glide down
+  // out of the focused camera's view instead of crowding it — a real move,
+  // not a visibility toggle, so there's nothing to pop in or out abruptly
+  // on the way back.
+  const groupRef = useRef<THREE.Group>(null);
+  const yRef = useRef(0);
+  const isFocused = focusedIndex === rs.index;
+  const parked = focusedIndex !== null && !isFocused;
+
+  useFrame(() => {
+    const targetY = parked ? PARK_Y_OFFSET : 0;
+    yRef.current = THREE.MathUtils.lerp(yRef.current, targetY, PARK_LERP);
+    groupRef.current?.position.set(rs.baseX, yRef.current, 0);
+  });
+
   return (
-    <group position={[rs.baseX, 0, 0]}>
-      <Canister rollIndex={rs.index} />
+    <group ref={groupRef} position={[rs.baseX, 0, 0]}>
+      <Canister
+        rollIndex={rs.index}
+        name={rs.roll.name}
+        time={rs.roll.time}
+        showLabel={focusedIndex === null}
+      />
       <Suspense fallback={null}>
         <FilmStrip rs={rs} />
       </Suspense>
@@ -196,7 +510,15 @@ function SceneController({
 
   useEffect(() => {
     focusedIndexRef.current = focusedIndex;
-  }, [focusedIndex]);
+    // Selecting a roll auto-extends its strip all the way out (the
+    // per-frame loop glides it there); the viewer can still drag to pull
+    // it back in or further, same as before.
+    if (focusedIndex !== null) {
+      const rs = rollStates[focusedIndex];
+      rs.pulledRef.current = rs.totalLength;
+      rs.hasInteractedRef.current = true;
+    }
+  }, [focusedIndex, rollStates]);
 
   useEffect(() => {
     const dom = gl.domElement;
@@ -247,8 +569,11 @@ function SceneController({
         -(((e.clientY - rect.top) / rect.height) * 2 - 1)
       );
       raycaster.setFromCamera(ndc, camera);
-      const hits = raycaster.intersectObjects(scene.children, true);
       const idx = focusedIndexRef.current;
+      // Parked rolls have physically moved out of the focused camera's
+      // frustum, so there's nothing special to filter here — a click can
+      // only land on geometry actually in the ray's path.
+      const hits = raycaster.intersectObjects(scene.children, true);
 
       for (const hit of hits) {
         const data = hit.object.userData as { photo?: Photo; rollIndex?: number };
@@ -263,7 +588,7 @@ function SceneController({
           continue;
         }
 
-        if (data.rollIndex !== idx) {
+        if (idx === null) {
           onSelectRoll(data.rollIndex);
         }
         return;
@@ -286,32 +611,56 @@ function SceneController({
   }, [gl, camera, scene, raycaster, rollStates, onSelectRoll, onPhotoClick]);
 
   useFrame(({ clock }) => {
+    const idx = focusedIndexRef.current;
     for (const rs of rollStates) {
-      let local = rs.pulledRef.current;
-      if (!rs.hasInteractedRef.current) {
-        local += Math.max(0, Math.sin(clock.elapsedTime * 1.2 + rs.index * 0.7)) * 0.25;
+      const isFocused = idx === rs.index;
+
+      // Auto-recover: the instant a roll isn't focused anymore, drop its
+      // pulled state back to resting so it doesn't stay stuck out (and
+      // risk overlapping a neighbor) after you look away.
+      if (!isFocused) {
+        rs.pulledRef.current = rs.minPulled;
+        rs.hasInteractedRef.current = false;
       }
-      rs.clipPlane.constant = rs.baseX + local;
+
+      let target = rs.pulledRef.current;
+      // Only the roll the viewer can actually see (nothing focused yet, or
+      // this is the focused one) breathes — an unfocused, hidden roll
+      // pulsing its strip out serves no purpose and risks nudging into its
+      // neighbor.
+      const canBreathe = idx === null || isFocused;
+      if (!rs.hasInteractedRef.current && canBreathe) {
+        target += Math.max(0, Math.sin(clock.elapsedTime * 1.2 + rs.index * 0.7)) * BREATH_AMPLITUDE;
+      }
+
+      // Snap 1:1 while actively dragging the focused roll; otherwise glide
+      // toward the target (this is what makes the recovery-to-rest smooth).
+      const snap = isFocused && draggingRef.current;
+      const lerpFactor = isFocused ? PULL_EXTEND_LERP : PULL_RETRACT_LERP;
+      rs.displayPulledRef.current = snap
+        ? target
+        : THREE.MathUtils.lerp(rs.displayPulledRef.current, target, lerpFactor);
+
+      rs.clipPlane.constant = rs.baseX + rs.displayPulledRef.current;
     }
 
-    const idx = focusedIndexRef.current;
     if (idx === null) {
       const last = rollStates[rollStates.length - 1];
       const overviewWidth = last.baseX + last.minPulled;
       const targetX = overviewWidth / 2;
       const camZ = 4.5 + overviewWidth * 0.32;
-      camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetX, 0.06);
-      camera.position.y = THREE.MathUtils.lerp(camera.position.y, 1.5, 0.06);
-      camera.position.z = THREE.MathUtils.lerp(camera.position.z, camZ, 0.06);
+      camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetX, CAMERA_OVERVIEW_LERP);
+      camera.position.y = THREE.MathUtils.lerp(camera.position.y, 1.5, CAMERA_OVERVIEW_LERP);
+      camera.position.z = THREE.MathUtils.lerp(camera.position.z, camZ, CAMERA_OVERVIEW_LERP);
       camera.lookAt(targetX, 0.2, 0);
     } else {
       const rs = rollStates[idx];
       const display = rs.clipPlane.constant - rs.baseX;
       const targetX = rs.baseX + display / 2;
       const camZ = 3.1 + Math.min(rs.totalLength, 6) * 0.11;
-      camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetX, 0.08);
-      camera.position.y = THREE.MathUtils.lerp(camera.position.y, 0.75, 0.08);
-      camera.position.z = THREE.MathUtils.lerp(camera.position.z, camZ, 0.08);
+      camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetX, CAMERA_FOCUS_LERP);
+      camera.position.y = THREE.MathUtils.lerp(camera.position.y, 0.75, CAMERA_FOCUS_LERP);
+      camera.position.z = THREE.MathUtils.lerp(camera.position.z, camZ, CAMERA_FOCUS_LERP);
       camera.lookAt(targetX, 0.05, 0);
     }
   });
@@ -348,7 +697,7 @@ export default function FilmScene({
       <directionalLight position={[-3, 2, -2]} intensity={0.35} />
       <directionalLight position={[0, -2, 4]} intensity={0.25} />
       {rollStates.map((rs) => (
-        <RollGroup key={rs.roll.name} rs={rs} />
+        <RollGroup key={rs.roll.id} rs={rs} focusedIndex={focusedIndex} />
       ))}
       <SceneController
         rollStates={rollStates}

@@ -4,6 +4,7 @@ import { imageSize } from "image-size";
 
 const PHOTOS_DIR = path.join(process.cwd(), "public", "photos");
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
+const ROLL_META_FILE = "roll.json";
 
 export type PhotoType = "film" | "digital";
 
@@ -16,11 +17,34 @@ export type Photo = {
   time: string;
   type: PhotoType;
   filmRoll?: string;
+  // The roll's folder name — a stable, unique grouping key. Two different
+  // rolls can share a display name (filmRoll) but never a folder, so this
+  // is what getFilmRolls groups by, not the name itself.
+  filmRollId?: string;
 };
 
-type PhotoMeta = Pick<Photo, "name" | "time" | "type" | "filmRoll">;
+// EXIF orientations 5-8 are a 90°/270° rotation, which browsers apply
+// automatically when decoding the image (so the pixels a <canvas>/WebGL
+// texture actually samples come out already rotated). image-size reports
+// raw sensor dimensions and leaves orientation for the caller to apply —
+// without this swap, a portrait phone photo stored sideways would be
+// reported as landscape, so downstream aspect-ratio math (and our
+// portrait-detection for the film-strip rotation) would be wrong.
+function readImageSize(imagePath: string, label: string) {
+  const { width, height, orientation } = imageSize(fs.readFileSync(imagePath));
+  if (!width || !height) {
+    throw new Error(`${label}: could not determine image dimensions`);
+  }
+  return orientation && orientation >= 5 && orientation <= 8
+    ? { width: height, height: width }
+    : { width, height };
+}
 
-function readMeta(jsonPath: string): PhotoMeta {
+// A loose "<id>.json" + "<id>.<ext>" pair directly in public/photos/ is a
+// single digital photo — no roll to group it under.
+function readDigitalPhoto(dir: string, jsonFile: string, siblingEntries: string[]): Photo {
+  const id = jsonFile.replace(/\.json$/, "");
+  const jsonPath = path.join(dir, jsonFile);
   const raw = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
 
   if (typeof raw.name !== "string" || !raw.name) {
@@ -29,73 +53,129 @@ function readMeta(jsonPath: string): PhotoMeta {
   if (typeof raw.time !== "string" || Number.isNaN(Date.parse(raw.time))) {
     throw new Error(`${jsonPath}: "time" must be a valid date string`);
   }
-  if (raw.type !== "film" && raw.type !== "digital") {
-    throw new Error(`${jsonPath}: "type" must be "film" or "digital"`);
-  }
-  if (raw.type === "film" && (typeof raw.filmRoll !== "string" || !raw.filmRoll)) {
-    throw new Error(`${jsonPath}: film photos require a "filmRoll" field`);
+
+  const imageFile = IMAGE_EXTENSIONS.map((ext) => `${id}${ext}`).find((candidate) =>
+    siblingEntries.includes(candidate)
+  );
+  if (!imageFile) {
+    throw new Error(
+      `public/photos/${jsonFile}: no matching image found (expected ${id}.jpg, .jpeg, .png, or .webp)`
+    );
   }
 
+  const { width, height } = readImageSize(path.join(dir, imageFile), `public/photos/${imageFile}`);
+
   return {
+    id,
+    src: `/photos/${imageFile}`,
+    width,
+    height,
     name: raw.name,
     time: raw.time,
-    type: raw.type,
-    ...(raw.type === "film" ? { filmRoll: raw.filmRoll } : {}),
+    type: "digital",
   };
+}
+
+// A subfolder of public/photos/ is a film roll: one roll.json naming the
+// roll and when it was shot, sitting alongside every frame's image file —
+// every image in the folder is a photo on the roll, full stop. A photo's
+// display name comes straight from its filename, and strip order is
+// alphabetical by filename (prefix with numbers, e.g. "01-Balcony.jpg", to
+// control it explicitly).
+function readFilmRollFolder(rollDir: string, folderName: string): Photo[] {
+  const jsonPath = path.join(rollDir, ROLL_META_FILE);
+  if (!fs.existsSync(jsonPath)) {
+    throw new Error(`public/photos/${folderName}/: missing ${ROLL_META_FILE}`);
+  }
+
+  const raw = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
+  if (typeof raw.name !== "string" || !raw.name) {
+    throw new Error(`${jsonPath}: missing required "name" field`);
+  }
+  if (typeof raw.time !== "string" || Number.isNaN(Date.parse(raw.time))) {
+    throw new Error(`${jsonPath}: "time" must be a valid date string`);
+  }
+
+  const files = fs
+    .readdirSync(rollDir)
+    .filter((f) => IMAGE_EXTENSIONS.includes(path.extname(f).toLowerCase()))
+    .sort((a, b) => a.localeCompare(b));
+
+  if (files.length === 0) {
+    throw new Error(
+      `public/photos/${folderName}/: no images found (expected .jpg, .jpeg, .png, or .webp)`
+    );
+  }
+
+  return files.map((file) => {
+    const { width, height } = readImageSize(
+      path.join(rollDir, file),
+      `public/photos/${folderName}/${file}`
+    );
+
+    return {
+      id: `${folderName}/${file}`,
+      src: encodeURI(`/photos/${folderName}/${file}`),
+      width,
+      height,
+      name: file.replace(/\.[^./\\]+$/, ""),
+      time: raw.time,
+      type: "film" as const,
+      filmRoll: raw.name,
+      filmRollId: folderName,
+    };
+  });
 }
 
 export function getPhotos(): Photo[] {
   if (!fs.existsSync(PHOTOS_DIR)) return [];
 
-  const entries = fs.readdirSync(PHOTOS_DIR);
-  const jsonFiles = entries.filter((f) => f.endsWith(".json"));
+  const entries = fs.readdirSync(PHOTOS_DIR, { withFileTypes: true });
+  const siblingEntries = entries.map((e) => e.name);
+  const photos: Photo[] = [];
 
-  const photos = jsonFiles.map((jsonFile) => {
-    const id = jsonFile.replace(/\.json$/, "");
-    const imageFile = IMAGE_EXTENSIONS.map((ext) => `${id}${ext}`).find((candidate) =>
-      entries.includes(candidate)
-    );
-
-    if (!imageFile) {
-      throw new Error(
-        `public/photos/${jsonFile}: no matching image found (expected ${id}.jpg, .jpeg, .png, or .webp)`
-      );
+  for (const entry of entries) {
+    if (entry.isDirectory()) {
+      photos.push(...readFilmRollFolder(path.join(PHOTOS_DIR, entry.name), entry.name));
+    } else if (entry.isFile() && entry.name.endsWith(".json")) {
+      photos.push(readDigitalPhoto(PHOTOS_DIR, entry.name, siblingEntries));
     }
-
-    const meta = readMeta(path.join(PHOTOS_DIR, jsonFile));
-    const { width, height } = imageSize(fs.readFileSync(path.join(PHOTOS_DIR, imageFile)));
-
-    if (!width || !height) {
-      throw new Error(`public/photos/${imageFile}: could not determine image dimensions`);
-    }
-
-    return { id, src: `/photos/${imageFile}`, width, height, ...meta };
-  });
+  }
 
   return photos.sort((a, b) => Date.parse(b.time) - Date.parse(a.time));
 }
 
 export type FilmRoll = {
+  id: string;
   name: string;
+  time: string;
   photos: Photo[];
 };
 
 export function getFilmRolls(photos: Photo[]): FilmRoll[] {
+  // Group by filmRollId (the folder), not filmRoll (the display name) —
+  // two separate rolls can share a name, and each still needs its own
+  // canister rather than getting merged into one. Photos within a roll all
+  // share that roll's time, so the stable global sort in getPhotos()
+  // already left them in filename order; no need to re-sort here.
   const rollMap = new Map<string, Photo[]>();
 
   for (const photo of photos) {
-    if (photo.type !== "film" || !photo.filmRoll) continue;
-    const list = rollMap.get(photo.filmRoll);
+    if (photo.type !== "film" || !photo.filmRoll || !photo.filmRollId) continue;
+    const list = rollMap.get(photo.filmRollId);
     if (list) {
       list.push(photo);
     } else {
-      rollMap.set(photo.filmRoll, [photo]);
+      rollMap.set(photo.filmRollId, [photo]);
     }
   }
 
-  const rolls = Array.from(rollMap.entries()).map(([name, rollPhotos]) => ({
-    name,
-    photos: rollPhotos.sort((a, b) => Date.parse(a.time) - Date.parse(b.time)),
+  const rolls = Array.from(rollMap.entries()).map(([id, rollPhotos]) => ({
+    id,
+    name: rollPhotos[0].filmRoll!,
+    // Every photo in a roll carries that roll's own time (see above).
+    time: rollPhotos[0].time,
+    photos: rollPhotos,
   }));
 
   return rolls.sort((a, b) => {
