@@ -2,6 +2,13 @@ import Image from "next/image";
 import Link from "next/link";
 import site from "@/data/site.json";
 
+// next/image never applies basePath to a hardcoded src when
+// images.unoptimized is on (required for static export) — the
+// basePath-prefixing logic lives in the default loader, which
+// unoptimized mode bypasses entirely. Same fix as FilmScene.tsx /
+// DigitalCityScene.tsx.
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
 const links = [
   { href: "/", label: "Work" },
   { href: "/about", label: "About" },
@@ -13,7 +20,7 @@ export default function SiteHeader() {
     <header className="flex flex-col items-center gap-4 px-6 py-12 text-center sm:py-16">
       <Link href="/" className="inline-block">
         <Image
-          src="/resources/logo.png"
+          src={`${BASE_PATH}/resources/logo.png`}
           alt={site.name}
           width={1326}
           height={209}
