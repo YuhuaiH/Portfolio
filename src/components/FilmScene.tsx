@@ -390,7 +390,7 @@ function Frame({
     <mesh
       position={[x, 0, 0.03]}
       rotation={isPortrait ? [0, 0, Math.PI / 2] : [0, 0, 0]}
-      userData={{ photo, rollIndex }}
+      userData={{ photo, rollIndex, isStrip: true }}
     >
       <planeGeometry args={[w, h]} />
       <meshBasicMaterial map={texture} toneMapped={false} clippingPlanes={[clipPlane]} />
@@ -422,7 +422,7 @@ function FilmStrip({ rs }: { rs: RollState }) {
 
   return (
     <group>
-      <mesh position={[SLOT_X + ribbonLength / 2, 0, 0]} userData={{ rollIndex: index }}>
+      <mesh position={[SLOT_X + ribbonLength / 2, 0, 0]} userData={{ rollIndex: index, isStrip: true }}>
         <boxGeometry args={[ribbonLength, FRAME_H, 0.04]} />
         <meshStandardMaterial
           map={ribbonTexture}
@@ -438,7 +438,7 @@ function FilmStrip({ rs }: { rs: RollState }) {
           {[holeY, -holeY].map((y) => (
             // A light, punched-through rectangle reads clearly against the
             // dark ribbon — a dark hole on a dark ribbon barely showed up.
-            <mesh key={y} position={[x, y, 0.025]} userData={{ rollIndex: index }}>
+            <mesh key={y} position={[x, y, 0.025]} userData={{ rollIndex: index, isStrip: true }}>
               <boxGeometry args={[SPROCKET_W, SPROCKET_H, 0.015]} />
               <meshStandardMaterial color="#cabfa8" roughness={0.7} clippingPlanes={[clipPlane]} />
             </mesh>
@@ -477,6 +477,19 @@ function RollGroup({ rs, focusedIndex }: { rs: RollState; focusedIndex: number |
 
   return (
     <group ref={groupRef} position={[rs.baseX, 0, 0]}>
+      {focusedIndex === null && (
+        // A generous, invisible click target spanning this roll's whole
+        // lane (edge-to-edge with its neighbors, no gaps or overlap) — the
+        // actual canister/strip are thin and easy to miss at overview zoom,
+        // so relying on their real geometry alone made selection feel
+        // finicky. Sits behind the visible geometry so it never wins a
+        // raycast over something actually there; it only matters in the
+        // gaps between rendered parts, where nothing else would be hit.
+        <mesh position={[0, 0.2, -0.1]} userData={{ rollIndex: rs.index }}>
+          <planeGeometry args={[rs.minPulled + ROLL_GAP, 3]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+      )}
       <Canister
         rollIndex={rs.index}
         name={rs.roll.name}
@@ -570,22 +583,29 @@ function SceneController({
       );
       raycaster.setFromCamera(ndc, camera);
       const idx = focusedIndexRef.current;
-      // Parked rolls have physically moved out of the focused camera's
-      // frustum, so there's nothing special to filter here — a click can
-      // only land on geometry actually in the ray's path.
       const hits = raycaster.intersectObjects(scene.children, true);
 
       for (const hit of hits) {
-        const data = hit.object.userData as { photo?: Photo; rollIndex?: number };
+        const data = hit.object.userData as {
+          photo?: Photo;
+          rollIndex?: number;
+          isStrip?: boolean;
+        };
         if (data.rollIndex === undefined) continue;
 
+        // The ribbon/sprocket/frame geometry always spans a roll's full
+        // length — only the shader clip plane hides the part that isn't
+        // pulled out yet, which raycasting ignores entirely. Without this
+        // check, a click can "see through" to a neighboring roll's
+        // still-invisible tail sitting at the same world position and
+        // select the wrong roll. The canister itself is never clipped, so
+        // it's exempt.
+        const rs = rollStates[data.rollIndex];
+        if (data.isStrip && hit.point.x > rs.clipPlane.constant + 0.02) continue;
+
         if (data.photo && idx === data.rollIndex) {
-          const rs = rollStates[data.rollIndex];
-          if (hit.point.x <= rs.clipPlane.constant + 0.02) {
-            onPhotoClick(data.photo);
-            return;
-          }
-          continue;
+          onPhotoClick(data.photo);
+          return;
         }
 
         if (idx === null) {
