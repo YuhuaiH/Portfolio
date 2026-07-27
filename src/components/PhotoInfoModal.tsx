@@ -6,6 +6,13 @@ import type { Photo } from "@/lib/photos";
 
 const MODAL_TRANSITION_MS = 220;
 
+// next/image never applies basePath to a hardcoded src when
+// images.unoptimized is on (required for static export) — the
+// basePath-prefixing logic lives in the default loader, which
+// unoptimized mode bypasses entirely. Same fix as SiteHeader.tsx /
+// FilmScene.tsx / DigitalCityScene.tsx.
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
 export function formatDate(time: string) {
   return new Date(time).toLocaleDateString(undefined, { year: "numeric", month: "long" });
 }
@@ -61,7 +68,7 @@ export default function PhotoInfoModal({
         onClick={(e) => e.stopPropagation()}
       >
         <Image
-          src={photo.src}
+          src={`${BASE_PATH}${photo.src}`}
           alt={photo.name}
           width={photo.width}
           height={photo.height}
