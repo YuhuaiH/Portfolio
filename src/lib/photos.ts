@@ -3,6 +3,8 @@ import path from "node:path";
 import { imageSize } from "image-size";
 
 const PHOTOS_DIR = path.join(process.cwd(), "public", "photos");
+const FILM_DIR = path.join(PHOTOS_DIR, "film");
+const DIGITAL_DIR = path.join(PHOTOS_DIR, "digital");
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
 const ROLL_META_FILE = "roll.json";
 
@@ -40,52 +42,62 @@ function readImageSize(imagePath: string, label: string) {
     : { width, height };
 }
 
-// A loose "<id>.json" + "<id>.<ext>" pair directly in public/photos/ is a
-// single digital photo — no roll to group it under.
-function readDigitalPhoto(dir: string, jsonFile: string, siblingEntries: string[]): Photo {
-  const id = jsonFile.replace(/\.json$/, "");
-  const jsonPath = path.join(dir, jsonFile);
-  const raw = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
+// Every image directly in public/photos/digital/ is a digital photo — no
+// roll to group it under. A "<id>.json" sidecar is optional and only
+// needs whichever of "name"/"time" you want to override; without one (or
+// with fields left out), the name comes from the filename and the date
+// falls back to the image file's own last-modified time.
+function readDigitalPhoto(dir: string, imageFile: string, siblingEntries: string[]): Photo {
+  const id = imageFile.replace(/\.[^./\\]+$/, "");
+  const jsonFile = `${id}.json`;
+  const imagePath = path.join(dir, imageFile);
 
-  if (typeof raw.name !== "string" || !raw.name) {
-    throw new Error(`${jsonPath}: missing required "name" field`);
-  }
-  if (typeof raw.time !== "string" || Number.isNaN(Date.parse(raw.time))) {
-    throw new Error(`${jsonPath}: "time" must be a valid date string`);
+  let name: string = id;
+  let time: string | undefined;
+
+  if (siblingEntries.includes(jsonFile)) {
+    const jsonPath = path.join(dir, jsonFile);
+    const raw = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
+
+    if (raw.name !== undefined) {
+      if (typeof raw.name !== "string" || !raw.name) {
+        throw new Error(`${jsonPath}: "name" must be a non-empty string`);
+      }
+      name = raw.name;
+    }
+    if (raw.time !== undefined) {
+      if (typeof raw.time !== "string" || Number.isNaN(Date.parse(raw.time))) {
+        throw new Error(`${jsonPath}: "time" must be a valid date string`);
+      }
+      time = raw.time;
+    }
   }
 
-  const imageFile = IMAGE_EXTENSIONS.map((ext) => `${id}${ext}`).find((candidate) =>
-    siblingEntries.includes(candidate)
-  );
-  if (!imageFile) {
-    throw new Error(
-      `public/photos/${jsonFile}: no matching image found (expected ${id}.jpg, .jpeg, .png, or .webp)`
-    );
-  }
+  time ??= fs.statSync(imagePath).mtime.toISOString();
 
-  const { width, height } = readImageSize(path.join(dir, imageFile), `public/photos/${imageFile}`);
+  const { width, height } = readImageSize(imagePath, `public/photos/digital/${imageFile}`);
 
   return {
     id,
-    src: `/photos/${imageFile}`,
+    src: `/photos/digital/${imageFile}`,
     width,
     height,
-    name: raw.name,
-    time: raw.time,
+    name,
+    time,
     type: "digital",
   };
 }
 
-// A subfolder of public/photos/ is a film roll: one roll.json naming the
-// roll and when it was shot, sitting alongside every frame's image file —
-// every image in the folder is a photo on the roll, full stop. A photo's
-// display name comes straight from its filename, and strip order is
-// alphabetical by filename (prefix with numbers, e.g. "01-Balcony.jpg", to
-// control it explicitly).
+// A subfolder of public/photos/film/ is a film roll: one roll.json naming
+// the roll and when it was shot, sitting alongside every frame's image
+// file — every image in the folder is a photo on the roll, full stop. A
+// photo's display name comes straight from its filename, and strip order
+// is alphabetical by filename (prefix with numbers, e.g. "01-Balcony.jpg",
+// to control it explicitly).
 function readFilmRollFolder(rollDir: string, folderName: string): Photo[] {
   const jsonPath = path.join(rollDir, ROLL_META_FILE);
   if (!fs.existsSync(jsonPath)) {
-    throw new Error(`public/photos/${folderName}/: missing ${ROLL_META_FILE}`);
+    throw new Error(`public/photos/film/${folderName}/: missing ${ROLL_META_FILE}`);
   }
 
   const raw = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
@@ -103,19 +115,19 @@ function readFilmRollFolder(rollDir: string, folderName: string): Photo[] {
 
   if (files.length === 0) {
     throw new Error(
-      `public/photos/${folderName}/: no images found (expected .jpg, .jpeg, .png, or .webp)`
+      `public/photos/film/${folderName}/: no images found (expected .jpg, .jpeg, .png, or .webp)`
     );
   }
 
   return files.map((file) => {
     const { width, height } = readImageSize(
       path.join(rollDir, file),
-      `public/photos/${folderName}/${file}`
+      `public/photos/film/${folderName}/${file}`
     );
 
     return {
       id: `${folderName}/${file}`,
-      src: encodeURI(`/photos/${folderName}/${file}`),
+      src: encodeURI(`/photos/film/${folderName}/${file}`),
       width,
       height,
       name: file.replace(/\.[^./\\]+$/, ""),
@@ -128,17 +140,23 @@ function readFilmRollFolder(rollDir: string, folderName: string): Photo[] {
 }
 
 export function getPhotos(): Photo[] {
-  if (!fs.existsSync(PHOTOS_DIR)) return [];
-
-  const entries = fs.readdirSync(PHOTOS_DIR, { withFileTypes: true });
-  const siblingEntries = entries.map((e) => e.name);
   const photos: Photo[] = [];
 
-  for (const entry of entries) {
-    if (entry.isDirectory()) {
-      photos.push(...readFilmRollFolder(path.join(PHOTOS_DIR, entry.name), entry.name));
-    } else if (entry.isFile() && entry.name.endsWith(".json")) {
-      photos.push(readDigitalPhoto(PHOTOS_DIR, entry.name, siblingEntries));
+  if (fs.existsSync(FILM_DIR)) {
+    for (const entry of fs.readdirSync(FILM_DIR, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        photos.push(...readFilmRollFolder(path.join(FILM_DIR, entry.name), entry.name));
+      }
+    }
+  }
+
+  if (fs.existsSync(DIGITAL_DIR)) {
+    const entries = fs.readdirSync(DIGITAL_DIR, { withFileTypes: true });
+    const siblingEntries = entries.map((e) => e.name);
+    for (const entry of entries) {
+      if (entry.isFile() && IMAGE_EXTENSIONS.includes(path.extname(entry.name).toLowerCase())) {
+        photos.push(readDigitalPhoto(DIGITAL_DIR, entry.name, siblingEntries));
+      }
     }
   }
 

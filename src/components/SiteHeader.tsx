@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import site from "@/data/site.json";
 
@@ -10,11 +11,15 @@ const links = [
 export default function SiteHeader() {
   return (
     <header className="flex flex-col items-center gap-4 px-6 py-12 text-center sm:py-16">
-      <Link
-        href="/"
-        className="font-heading text-3xl tracking-wide sm:text-4xl"
-      >
-        {site.name}
+      <Link href="/" className="inline-block">
+        <Image
+          src="/resources/logo.png"
+          alt={site.name}
+          width={1326}
+          height={209}
+          priority
+          className="h-9 w-auto sm:h-11"
+        />
       </Link>
       <nav className="flex items-center text-xs tracking-[0.2em] uppercase text-muted">
         {links.map((link, i) => (
