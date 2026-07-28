@@ -20,7 +20,6 @@ const CAN_TOP_SPOOL_H = 4.5 * MM_TO_UNIT;
 const CAN_TOP_SPOOL_R = (10.0 / 2) * MM_TO_UNIT;
 const CAN_BOTTOM_SPOOL_H = 3.4 * MM_TO_UNIT;
 const CAN_BOTTOM_SPOOL_R = (10.0 / 2) * MM_TO_UNIT;
-const CAN_LIP_EXTENT = 5.5 * MM_TO_UNIT;
 const FRAME_H = 1.0;
 // A single real mm-to-scene-unit scale, anchored on the 35mm strip width
 // mapping to FRAME_H, used for every film-strip dimension below (frame
@@ -42,13 +41,13 @@ const FRAME_SPACING = FRAME_W + FRAME_GAP;
 const PERF_MARGIN_H = 5.5 * FILM_MM_TO_UNIT;
 const PHOTO_MAX_W = FRAME_W;
 const PHOTO_MAX_H = 24 * FILM_MM_TO_UNIT;
-// A short curved "leader" bridges the canister's slot to where the flat,
-// interactive strip starts — always visible, unaffected by pulling — so
-// the film reads as peeling off the roll's curve instead of a flat plane
-// jutting straight out of the side of the can.
+// A short curved "leader" bridges directly from the canister's body to
+// where the flat, interactive strip starts — always visible, unaffected
+// by pulling — so the film reads as peeling straight off the roll's
+// curve, with nothing separate housing the join.
 const LEADER_LENGTH = 0.4;
 const LEADER_BEND = 0.16;
-const SLOT_X = CAN_RADIUS + CAN_LIP_EXTENT + LEADER_LENGTH;
+const SLOT_X = CAN_RADIUS + LEADER_LENGTH;
 // Real 135-format perforations: 2.8mm × 1.9mm rectangles on a 4.74mm pitch,
 // running continuously down the whole strip at the correct spacing, rather
 // than a fixed count squeezed into each frame.
@@ -366,12 +365,10 @@ function Canister({
   const bottom = -(CAN_BOTTOM_SPOOL_H + CAN_BODY_H / 2);
   const bottomSpoolY = bottom + CAN_BOTTOM_SPOOL_H / 2;
   const bodyBottom = bottom + CAN_BOTTOM_SPOOL_H;
-  const bodyY = bodyBottom + CAN_BODY_H / 2; // the whole body's center — ~0, by construction
   const bodyLabelY = bodyBottom + bodyLabelH / 2;
   const bodyCapY = bodyBottom + bodyLabelH + bodyCapH / 2;
   const topSpoolY = bodyBottom + CAN_BODY_H + CAN_TOP_SPOOL_H / 2;
   const topSurfaceY = topSpoolY + CAN_TOP_SPOOL_H / 2;
-  const slotH = CAN_BODY_H * 0.5;
 
   const plastic = (roughness = 0.3) => (
     <meshStandardMaterial
@@ -415,17 +412,6 @@ function Canister({
       <mesh position={[0, topSurfaceY + 0.003, 0]} userData={userData}>
         <cylinderGeometry args={[CAN_TOP_SPOOL_R * 0.55, CAN_TOP_SPOOL_R * 0.55, 0.006, 20]} />
         <meshStandardMaterial color="#000000" roughness={0.8} />
-      </mesh>
-      {/* Light-trap slot, where the strip exits — a darker felt-lined
-          opening set into a slightly larger surround, extending out
-          tangentially by the spec's 5.5mm lip. */}
-      <mesh position={[CAN_RADIUS + CAN_LIP_EXTENT / 2 - 0.015, bodyY, 0]} userData={userData}>
-        <boxGeometry args={[CAN_LIP_EXTENT + 0.03, slotH * 1.1, 0.045]} />
-        <meshStandardMaterial color="#2e2c2a" roughness={0.95} />
-      </mesh>
-      <mesh position={[CAN_RADIUS + CAN_LIP_EXTENT / 2 - 0.005, bodyY, 0]} userData={userData}>
-        <boxGeometry args={[CAN_LIP_EXTENT - 0.01, slotH, 0.03]} />
-        <meshStandardMaterial color="#040404" roughness={0.9} />
       </mesh>
       <Html position={[0, topSurfaceY + 0.2, 0]} center style={{ pointerEvents: "none" }}>
         <div
@@ -532,7 +518,7 @@ function FilmStrip({ rs }: { rs: RollState }) {
   return (
     <group>
       <mesh
-        position={[CAN_RADIUS + CAN_LIP_EXTENT + LEADER_LENGTH / 2, 0, 0]}
+        position={[CAN_RADIUS + LEADER_LENGTH / 2, 0, 0]}
         geometry={leaderGeometry}
         userData={{ rollIndex: index }}
       >
