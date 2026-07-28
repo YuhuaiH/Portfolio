@@ -21,27 +21,37 @@ const CAN_TOP_SPOOL_R = (10.0 / 2) * MM_TO_UNIT;
 const CAN_BOTTOM_SPOOL_H = 3.4 * MM_TO_UNIT;
 const CAN_BOTTOM_SPOOL_R = (10.0 / 2) * MM_TO_UNIT;
 const CAN_LIP_EXTENT = 5.5 * MM_TO_UNIT;
-const FRAME_W = 1.5;
 const FRAME_H = 1.0;
-// Real 135 frames sit close together — the physically-"correct" ~2.5mm
-// border (0.08) still read as gappier than an actual strip once the holes
-// became real perforations, so this leans tighter than the metric ratio.
-const FRAME_GAP = 0.035;
+// A single real mm-to-scene-unit scale, anchored on the 35mm strip width
+// mapping to FRAME_H, used for every film-strip dimension below (frame
+// pitch, image-clear margin, perforation size/spacing) so they all stay
+// in one consistent real proportion. Frame width and the perforation
+// scale used to each be derived from their own, mismatched conversion,
+// which left photos rendering far narrower than their slot — a gap
+// between frames much bigger than real 135 film has.
+const FILM_MM_TO_UNIT = FRAME_H / 35;
+// 36mm real frame advance/pitch.
+const FRAME_W = 36 * FILM_MM_TO_UNIT;
+// ~1.5mm true gap between frames on the strip.
+const FRAME_GAP = 1.5 * FILM_MM_TO_UNIT;
 const FRAME_SPACING = FRAME_W + FRAME_GAP;
 // Real 135 film: a 35mm-wide strip split into a 24mm image area (68.6%)
 // down the middle, flanked by 5.5mm perforation margins (31.4% total) —
 // this is what keeps the photo itself clear of the sprocket holes instead
 // of letting it grow tall enough to run into them.
-const FILM_WIDTH_TO_UNIT = FRAME_H / 35;
-const PERF_MARGIN_H = 5.5 * FILM_WIDTH_TO_UNIT;
-const PHOTO_MAX_W = 1.25;
-const PHOTO_MAX_H = 24 * FILM_WIDTH_TO_UNIT;
-const SLOT_X = CAN_RADIUS + CAN_LIP_EXTENT + 0.03;
+const PERF_MARGIN_H = 5.5 * FILM_MM_TO_UNIT;
+const PHOTO_MAX_W = FRAME_W;
+const PHOTO_MAX_H = 24 * FILM_MM_TO_UNIT;
+// A short curved "leader" bridges the canister's slot to where the flat,
+// interactive strip starts — always visible, unaffected by pulling — so
+// the film reads as peeling off the roll's curve instead of a flat plane
+// jutting straight out of the side of the can.
+const LEADER_LENGTH = 0.4;
+const LEADER_BEND = 0.16;
+const SLOT_X = CAN_RADIUS + CAN_LIP_EXTENT + LEADER_LENGTH;
 // Real 135-format perforations: 2.8mm × 1.9mm rectangles on a 4.74mm pitch,
-// scaled against the 36mm real frame width mapping onto our FRAME_W so the
-// holes run continuously down the whole strip at the correct spacing,
-// rather than a fixed count squeezed into each frame.
-const FILM_MM_TO_UNIT = FRAME_W / 36;
+// running continuously down the whole strip at the correct spacing, rather
+// than a fixed count squeezed into each frame.
 const SPROCKET_PITCH = 4.74 * FILM_MM_TO_UNIT;
 const SPROCKET_W = 2.8 * FILM_MM_TO_UNIT;
 const SPROCKET_H = 1.9 * FILM_MM_TO_UNIT;
@@ -228,6 +238,26 @@ function buildRibbonGeometry(ribbonLength: number, holeLocalXs: number[], holeY:
     curveSegments: 4,
   });
   geometry.translate(0, 0, -RIBBON_DEPTH / 2);
+  return geometry;
+}
+
+// A thin curved bridge from the canister's slot to the flat strip — bows
+// out and eases back to flat by the far end, like film peeling off a
+// curved roll rather than a rigid plane bolted straight onto the can.
+function buildLeaderGeometry(length: number, width: number, amplitude: number) {
+  const geometry = new THREE.PlaneGeometry(length, width, 16, 1);
+  const pos = geometry.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const localX = pos.getX(i);
+    const t = localX / length + 0.5; // 0 at the canister edge, 1 at the flat strip
+    // Bends vertically (not in depth) since the camera looks at the scene
+    // near head-on — a depth-axis curl barely registers from that angle,
+    // while a vertical dip reads clearly.
+    const bend = amplitude * Math.sin(Math.PI * t);
+    pos.setY(i, pos.getY(i) + bend);
+  }
+  pos.needsUpdate = true;
+  geometry.computeVertexNormals();
   return geometry;
 }
 
@@ -486,8 +516,35 @@ function FilmStrip({ rs }: { rs: RollState }) {
     [ribbonLength, holeLocalXs, holeY]
   );
 
+  const leaderGeometry = useMemo(
+    () => buildLeaderGeometry(LEADER_LENGTH, FRAME_H, LEADER_BEND),
+    []
+  );
+  // Reuses the same grainy film-base look as the main ribbon — a flat solid
+  // color read as almost invisible against the dark scene background, which
+  // defeated the point of curving it.
+  const leaderTexture = useMemo(() => {
+    const t = createFilmBaseTexture();
+    if (t) t.repeat.set(LEADER_LENGTH / 0.3, 1);
+    return t;
+  }, []);
+
   return (
     <group>
+      <mesh
+        position={[CAN_RADIUS + CAN_LIP_EXTENT + LEADER_LENGTH / 2, 0, 0]}
+        geometry={leaderGeometry}
+        userData={{ rollIndex: index }}
+      >
+        <meshStandardMaterial
+          map={leaderTexture}
+          color={leaderTexture ? "#ffffff" : "#221d17"}
+          roughness={0.6}
+          metalness={0.05}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
       <mesh
         position={[SLOT_X + ribbonLength / 2, 0, 0]}
         geometry={ribbonGeometry}
