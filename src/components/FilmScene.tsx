@@ -41,15 +41,22 @@ const FRAME_SPACING = FRAME_W + FRAME_GAP;
 const PERF_MARGIN_H = 5.5 * FILM_MM_TO_UNIT;
 const PHOTO_MAX_W = FRAME_W;
 const PHOTO_MAX_H = 24 * FILM_MM_TO_UNIT;
-// The flat, interactive strip starts just clear of the canister's outline.
-// A short flat "leader" — always visible, unaffected by pulling — fills
-// the gap between them, starting from inside the canister's own silhouette
-// (LEADER_START_X is negative) so the canister's body naturally hides its
-// near end and it reads as coming from within/behind the roll instead of
-// tangent to the front of it.
-const SLOT_X = CAN_RADIUS + 0.1;
-const LEADER_START_X = -CAN_RADIUS * 0.6;
-const LEADER_LENGTH = SLOT_X - LEADER_START_X;
+// Before the flat, interactive strip begins, a short "wrap" mesh — always
+// visible, unaffected by pulling — sits flush against the canister's own
+// outer surface (same radius, offset out by a hair to avoid z-fighting)
+// and sweeps from directly behind the can (WRAP_START_ANGLE) around to
+// the tangent point on its right edge (WRAP_END_ANGLE), where the flat
+// strip picks up. Standard math convention: angle 0 = +X (right, the
+// tangent point), increasing counterclockwise, so 3π/2 is straight back
+// (-Z, away from the camera). Most of the sweep sits behind the can's own
+// front surface and is naturally hidden by it — exactly the point, since
+// the strip is meant to read as emerging from behind the roll rather than
+// bolted flat onto its front.
+const WRAP_RADIUS_OFFSET = 0.006;
+const WRAP_START_ANGLE = (Math.PI * 3) / 2;
+const WRAP_END_ANGLE = Math.PI * 2;
+const WRAP_RADIUS = CAN_RADIUS + WRAP_RADIUS_OFFSET;
+const SLOT_X = WRAP_RADIUS;
 // Real 135-format perforations: 2.8mm × 1.9mm rectangles on a 4.74mm pitch,
 // running continuously down the whole strip at the correct spacing, rather
 // than a fixed count squeezed into each frame.
@@ -239,6 +246,25 @@ function buildRibbonGeometry(ribbonLength: number, holeLocalXs: number[], holeY:
     curveSegments: 4,
   });
   geometry.translate(0, 0, -RIBBON_DEPTH / 2);
+  return geometry;
+}
+
+// A ribbon that hugs the canister's own outer surface (constant radius)
+// while sweeping from startAngle to endAngle, instead of cutting a flat
+// plane through its body — so the hidden portion is genuinely tracing the
+// can's curved exterior, not floating inside its interior volume.
+function buildWrapGeometry(radius: number, startAngle: number, endAngle: number, frameH: number) {
+  const segments = 24;
+  const geometry = new THREE.PlaneGeometry(1, frameH, segments, 1);
+  const pos = geometry.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const u = pos.getX(i) + 0.5; // 0 at the start angle, 1 at the tangent point
+    const angle = startAngle + (endAngle - startAngle) * u;
+    pos.setX(i, radius * Math.cos(angle));
+    pos.setZ(i, radius * Math.sin(angle));
+  }
+  pos.needsUpdate = true;
+  geometry.computeVertexNormals();
   return geometry;
 }
 
@@ -484,24 +510,25 @@ function FilmStrip({ rs }: { rs: RollState }) {
     [ribbonLength, holeLocalXs, holeY]
   );
 
+  const wrapGeometry = useMemo(
+    () => buildWrapGeometry(WRAP_RADIUS, WRAP_START_ANGLE, WRAP_END_ANGLE, FRAME_H),
+    []
+  );
   // Reuses the same grainy film-base look as the main ribbon — a flat solid
   // color read as almost invisible against the dark scene background.
-  const leaderTexture = useMemo(() => {
+  const wrapTexture = useMemo(() => {
     const t = createFilmBaseTexture();
-    if (t) t.repeat.set(LEADER_LENGTH / 0.3, 1);
+    const arcLength = WRAP_RADIUS * (WRAP_END_ANGLE - WRAP_START_ANGLE);
+    if (t) t.repeat.set(arcLength / 0.3, 1);
     return t;
   }, []);
 
   return (
     <group>
-      <mesh
-        position={[LEADER_START_X + LEADER_LENGTH / 2, 0, 0]}
-        userData={{ rollIndex: index }}
-      >
-        <planeGeometry args={[LEADER_LENGTH, FRAME_H]} />
+      <mesh geometry={wrapGeometry} userData={{ rollIndex: index }}>
         <meshStandardMaterial
-          map={leaderTexture}
-          color={leaderTexture ? "#ffffff" : "#221d17"}
+          map={wrapTexture}
+          color={wrapTexture ? "#ffffff" : "#221d17"}
           roughness={0.6}
           metalness={0.05}
           side={THREE.DoubleSide}
