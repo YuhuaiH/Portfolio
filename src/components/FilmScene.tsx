@@ -23,7 +23,10 @@ const CAN_BOTTOM_SPOOL_R = (10.0 / 2) * MM_TO_UNIT;
 const CAN_LIP_EXTENT = 5.5 * MM_TO_UNIT;
 const FRAME_W = 1.5;
 const FRAME_H = 1.0;
-const FRAME_GAP = 0.18;
+// Real 135 frames sit close together — roughly a 2.5mm border between
+// 36mm-wide frames (~7% of the frame width) — the old 0.18 (12%) read as
+// noticeably gappier than an actual strip.
+const FRAME_GAP = 0.08;
 const FRAME_SPACING = FRAME_W + FRAME_GAP;
 // Real 135 film: a 35mm-wide strip split into a 24mm image area (68.6%)
 // down the middle, flanked by 5.5mm perforation margins (31.4% total) —
@@ -523,13 +526,16 @@ function SceneController({
 
   useEffect(() => {
     focusedIndexRef.current = focusedIndex;
-    // Selecting a roll auto-extends its strip all the way out (the
-    // per-frame loop glides it there); the viewer can still drag to pull
-    // it back in or further, same as before.
+    // Selecting a roll auto-extends it partway (the per-frame loop glides
+    // it there) — only halfway, not all the way out. Fully revealing every
+    // frame automatically left nothing for the viewer to actually pull;
+    // stopping at the midpoint still shows there's more roll to go, and
+    // leaving hasInteractedRef false keeps the idle breathing animation
+    // running on top of it as a "there's more — try pulling" nudge until
+    // the viewer actually grabs it.
     if (focusedIndex !== null) {
       const rs = rollStates[focusedIndex];
-      rs.pulledRef.current = rs.totalLength;
-      rs.hasInteractedRef.current = true;
+      rs.pulledRef.current = rs.minPulled + (rs.totalLength - rs.minPulled) * 0.5;
     }
   }, [focusedIndex, rollStates]);
 
@@ -693,8 +699,19 @@ function SceneController({
     } else {
       const rs = rollStates[idx];
       const display = rs.clipPlane.constant - rs.baseX;
-      const targetX = rs.baseX + display / 2;
-      const camZ = camZForHalfWidth(Math.min(rs.totalLength, 6) / 2 + 0.5, 3.1);
+      const halfWidth = Math.min(rs.totalLength, 6) / 2 + 0.5;
+      const camZ = camZForHalfWidth(halfWidth, 3.1);
+      // Centering on the midpoint between the canister and the growing tip
+      // works fine while there's not much strip out yet, but on a long roll
+      // (5+ photos) that midpoint keeps drifting right while the zoom stays
+      // capped — eventually pushing the tip you're actually dragging
+      // outside the frame. Past a certain point, switch to tracking a
+      // window anchored on the tip instead (with a little margin so it
+      // isn't flush against the edge), so the part you interact with is
+      // always in view regardless of how long the roll is.
+      const midpointX = display / 2;
+      const tipAnchoredX = display - halfWidth + 0.4;
+      const targetX = rs.baseX + Math.max(midpointX, tipAnchoredX);
       camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetX, CAMERA_FOCUS_LERP);
       camera.position.y = THREE.MathUtils.lerp(camera.position.y, 0.75, CAMERA_FOCUS_LERP);
       camera.position.z = THREE.MathUtils.lerp(camera.position.z, camZ, CAMERA_FOCUS_LERP);
