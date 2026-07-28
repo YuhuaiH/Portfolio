@@ -23,10 +23,10 @@ const CAN_BOTTOM_SPOOL_R = (10.0 / 2) * MM_TO_UNIT;
 const CAN_LIP_EXTENT = 5.5 * MM_TO_UNIT;
 const FRAME_W = 1.5;
 const FRAME_H = 1.0;
-// Real 135 frames sit close together — roughly a 2.5mm border between
-// 36mm-wide frames (~7% of the frame width) — the old 0.18 (12%) read as
-// noticeably gappier than an actual strip.
-const FRAME_GAP = 0.08;
+// Real 135 frames sit close together — the physically-"correct" ~2.5mm
+// border (0.08) still read as gappier than an actual strip once the holes
+// became real perforations, so this leans tighter than the metric ratio.
+const FRAME_GAP = 0.035;
 const FRAME_SPACING = FRAME_W + FRAME_GAP;
 // Real 135 film: a 35mm-wide strip split into a 24mm image area (68.6%)
 // down the middle, flanked by 5.5mm perforation margins (31.4% total) —
@@ -177,6 +177,53 @@ function createFilmBaseTexture() {
   texture.wrapT = THREE.RepeatWrapping;
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
+}
+
+// A small rounded-rect path, used as a shape hole below — real perforations
+// have softly rounded corners rather than sharp ones.
+function roundedRectPath(cx: number, cy: number, w: number, h: number, r: number) {
+  const hw = w / 2;
+  const hh = h / 2;
+  const rr = Math.min(r, hw, hh);
+  const path = new THREE.Path();
+  path.moveTo(cx - hw + rr, cy - hh);
+  path.lineTo(cx + hw - rr, cy - hh);
+  path.quadraticCurveTo(cx + hw, cy - hh, cx + hw, cy - hh + rr);
+  path.lineTo(cx + hw, cy + hh - rr);
+  path.quadraticCurveTo(cx + hw, cy + hh, cx + hw - rr, cy + hh);
+  path.lineTo(cx - hw + rr, cy + hh);
+  path.quadraticCurveTo(cx - hw, cy + hh, cx - hw, cy + hh - rr);
+  path.lineTo(cx - hw, cy - hh + rr);
+  path.quadraticCurveTo(cx - hw, cy - hh, cx - hw + rr, cy - hh);
+  return path;
+}
+
+// The ribbon mesh's sprocket holes are cut all the way through the
+// geometry — real perforations you can see the scene through — rather than
+// a light-colored patch sitting on top of an opaque strip.
+function buildRibbonGeometry(ribbonLength: number, holeLocalXs: number[], holeY: number) {
+  const halfL = ribbonLength / 2;
+  const halfH = FRAME_H / 2;
+  const shape = new THREE.Shape();
+  shape.moveTo(-halfL, -halfH);
+  shape.lineTo(halfL, -halfH);
+  shape.lineTo(halfL, halfH);
+  shape.lineTo(-halfL, halfH);
+  shape.lineTo(-halfL, -halfH);
+
+  const holeRadius = Math.min(SPROCKET_W, SPROCKET_H) * 0.28;
+  for (const x of holeLocalXs) {
+    shape.holes.push(roundedRectPath(x, holeY, SPROCKET_W, SPROCKET_H, holeRadius));
+    shape.holes.push(roundedRectPath(x, -holeY, SPROCKET_W, SPROCKET_H, holeRadius));
+  }
+
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: 0.04,
+    bevelEnabled: false,
+    curveSegments: 4,
+  });
+  geometry.translate(0, 0, -0.02);
+  return geometry;
 }
 
 // Cylindrical paper-label wrap for the canister body — the roll's name,
@@ -414,40 +461,42 @@ function FilmStrip({ rs }: { rs: RollState }) {
 
   // Perforations run continuously down the whole strip at the real pitch —
   // not clustered per frame with the gaps skipped — the way an actual
-  // negative's sprocket holes do.
-  const holeXs = useMemo(() => {
+  // negative's sprocket holes do. Kept in local (mesh-relative) coordinates
+  // since they feed straight into the ribbon geometry below; a hole is
+  // dropped if it would straddle the strip's cut ends, since a hole
+  // punching through the outer boundary breaks the shape triangulation.
+  const holeLocalXs = useMemo(() => {
+    const halfL = ribbonLength / 2;
+    const margin = SPROCKET_W / 2 + 0.002;
     const xs: number[] = [];
     for (let x = SLOT_X + SPROCKET_PITCH / 2; x < totalLength; x += SPROCKET_PITCH) {
-      xs.push(x);
+      const local = x - (SLOT_X + halfL);
+      if (local - margin >= -halfL && local + margin <= halfL) xs.push(local);
     }
     return xs;
-  }, [totalLength]);
+  }, [totalLength, ribbonLength]);
+
+  const ribbonGeometry = useMemo(
+    () => buildRibbonGeometry(ribbonLength, holeLocalXs, holeY),
+    [ribbonLength, holeLocalXs, holeY]
+  );
 
   return (
     <group>
-      <mesh position={[SLOT_X + ribbonLength / 2, 0, 0]} userData={{ rollIndex: index, isStrip: true }}>
-        <boxGeometry args={[ribbonLength, FRAME_H, 0.04]} />
+      <mesh
+        position={[SLOT_X + ribbonLength / 2, 0, 0]}
+        geometry={ribbonGeometry}
+        userData={{ rollIndex: index, isStrip: true }}
+      >
         <meshStandardMaterial
           map={ribbonTexture}
           color={ribbonTexture ? "#ffffff" : "#221d17"}
           roughness={0.6}
           metalness={0.05}
+          side={THREE.DoubleSide}
           clippingPlanes={[clipPlane]}
         />
       </mesh>
-
-      {holeXs.map((x) => (
-        <group key={x}>
-          {[holeY, -holeY].map((y) => (
-            // A light, punched-through rectangle reads clearly against the
-            // dark ribbon — a dark hole on a dark ribbon barely showed up.
-            <mesh key={y} position={[x, y, 0.025]} userData={{ rollIndex: index, isStrip: true }}>
-              <boxGeometry args={[SPROCKET_W, SPROCKET_H, 0.015]} />
-              <meshStandardMaterial color="#cabfa8" roughness={0.7} clippingPlanes={[clipPlane]} />
-            </mesh>
-          ))}
-        </group>
-      ))}
 
       {roll.photos.map((photo, i) => (
         <Frame
