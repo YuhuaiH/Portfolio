@@ -45,6 +45,11 @@ const FILM_MM_TO_UNIT = FRAME_W / 36;
 const SPROCKET_PITCH = 4.74 * FILM_MM_TO_UNIT;
 const SPROCKET_W = 2.8 * FILM_MM_TO_UNIT;
 const SPROCKET_H = 1.9 * FILM_MM_TO_UNIT;
+// Real film base is a fraction of a millimeter thick — this is nowhere
+// near that, but it's thin enough for the punched sprocket holes to read
+// as slits rather than the boxy tunnels a thicker ribbon produced.
+const RIBBON_DEPTH = 0.01;
+const FRAME_Z = RIBBON_DEPTH / 2 + 0.01;
 const ROLL_GAP = 1.1;
 const BREATH_AMPLITUDE = 0.25;
 const CLICK_DRAG_THRESHOLD = 6;
@@ -218,11 +223,11 @@ function buildRibbonGeometry(ribbonLength: number, holeLocalXs: number[], holeY:
   }
 
   const geometry = new THREE.ExtrudeGeometry(shape, {
-    depth: 0.04,
+    depth: RIBBON_DEPTH,
     bevelEnabled: false,
     curveSegments: 4,
   });
-  geometry.translate(0, 0, -0.02);
+  geometry.translate(0, 0, -RIBBON_DEPTH / 2);
   return geometry;
 }
 
@@ -385,11 +390,11 @@ function Canister({
           opening set into a slightly larger surround, extending out
           tangentially by the spec's 5.5mm lip. */}
       <mesh position={[CAN_RADIUS + CAN_LIP_EXTENT / 2 - 0.015, bodyY, 0]} userData={userData}>
-        <boxGeometry args={[CAN_LIP_EXTENT + 0.03, slotH * 1.1, 0.11]} />
+        <boxGeometry args={[CAN_LIP_EXTENT + 0.03, slotH * 1.1, 0.045]} />
         <meshStandardMaterial color="#2e2c2a" roughness={0.95} />
       </mesh>
       <mesh position={[CAN_RADIUS + CAN_LIP_EXTENT / 2 - 0.005, bodyY, 0]} userData={userData}>
-        <boxGeometry args={[CAN_LIP_EXTENT - 0.01, slotH, 0.08]} />
+        <boxGeometry args={[CAN_LIP_EXTENT - 0.01, slotH, 0.03]} />
         <meshStandardMaterial color="#040404" roughness={0.9} />
       </mesh>
       <Html position={[0, topSurfaceY + 0.2, 0]} center style={{ pointerEvents: "none" }}>
@@ -438,7 +443,7 @@ function Frame({
 
   return (
     <mesh
-      position={[x, 0, 0.03]}
+      position={[x, 0, FRAME_Z]}
       rotation={isPortrait ? [0, 0, Math.PI / 2] : [0, 0, 0]}
       userData={{ photo, rollIndex, isStrip: true }}
     >
