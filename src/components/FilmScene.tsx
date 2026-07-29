@@ -57,6 +57,17 @@ const WRAP_START_ANGLE = (Math.PI * 3) / 2;
 const WRAP_END_ANGLE = Math.PI * 2;
 const WRAP_RADIUS = CAN_RADIUS + WRAP_RADIUS_OFFSET;
 const SLOT_X = WRAP_RADIUS;
+// The wrap/ribbon/frames all sit this far below the canister's own
+// vertical center (which the label and spool geometry are built around) —
+// nudges the strip down from dead-center so it reads as riding a little
+// lower on the roll instead of bisecting it exactly.
+const STRIP_Y_OFFSET = -0.07;
+// World-unit width of the soft brightness blend applied at the wrap→strip
+// seam (see buildWrapGeometry/buildRibbonGeometry) — same distance on both
+// sides of the joint so neither texture's fade is more abrupt than the
+// other's.
+const SEAM_FADE_LENGTH = 0.1;
+const SEAM_FADE_DARKEN = 0.72;
 // Real 135-format perforations: 2.8mm × 1.9mm rectangles on a 4.74mm pitch,
 // running continuously down the whole strip at the correct spacing, rather
 // than a fixed count squeezed into each frame.
@@ -221,6 +232,16 @@ function roundedRectPath(cx: number, cy: number, w: number, h: number, r: number
   return path;
 }
 
+// A per-vertex brightness multiplier (1 = untouched, darker toward
+// SEAM_FADE_DARKEN) that ramps over SEAM_FADE_LENGTH as `distanceFromSeam`
+// approaches 0 — shared by both the wrap and ribbon geometries so the two
+// halves of the joint fade at the same rate instead of one side cutting off
+// sharper than the other.
+function seamBrightness(distanceFromSeam: number) {
+  const t = THREE.MathUtils.clamp(distanceFromSeam / SEAM_FADE_LENGTH, 0, 1);
+  return THREE.MathUtils.lerp(SEAM_FADE_DARKEN, 1, t);
+}
+
 // The ribbon mesh's sprocket holes are cut all the way through the
 // geometry — real perforations you can see the scene through — rather than
 // a light-colored patch sitting on top of an opaque strip.
@@ -246,6 +267,21 @@ function buildRibbonGeometry(ribbonLength: number, holeLocalXs: number[], holeY:
     curveSegments: 4,
   });
   geometry.translate(0, 0, -RIBBON_DEPTH / 2);
+
+  // The ribbon's near end (-halfL) is the one butted against the wrap
+  // mesh — fade it toward SEAM_FADE_DARKEN there so the seam reads as a
+  // soft blend rather than a hard edge; the far (free) end is untouched.
+  const pos = geometry.attributes.position;
+  const colors = new Float32Array(pos.count * 3);
+  for (let i = 0; i < pos.count; i++) {
+    const localX = pos.getX(i);
+    const brightness = seamBrightness(localX - -halfL);
+    colors[i * 3] = brightness;
+    colors[i * 3 + 1] = brightness;
+    colors[i * 3 + 2] = brightness;
+  }
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+
   return geometry;
 }
 
@@ -257,21 +293,100 @@ function buildWrapGeometry(radius: number, startAngle: number, endAngle: number,
   const segments = 24;
   const geometry = new THREE.PlaneGeometry(1, frameH, segments, 1);
   const pos = geometry.attributes.position;
+  const arcLength = radius * (endAngle - startAngle);
+  const colors = new Float32Array(pos.count * 3);
   for (let i = 0; i < pos.count; i++) {
     const u = pos.getX(i) + 0.5; // 0 at the start angle, 1 at the tangent point
     const angle = startAngle + (endAngle - startAngle) * u;
     pos.setX(i, radius * Math.cos(angle));
     pos.setZ(i, radius * Math.sin(angle));
+
+    // The tangent point (u = 1) is where the ribbon mesh picks up — fade
+    // toward SEAM_FADE_DARKEN there to match the ribbon's own fade at its
+    // near end, so the two textures blend instead of meeting at a hard cut.
+    const brightness = seamBrightness((1 - u) * arcLength);
+    colors[i * 3] = brightness;
+    colors[i * 3 + 1] = brightness;
+    colors[i * 3 + 2] = brightness;
   }
   pos.needsUpdate = true;
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
   geometry.computeVertexNormals();
   return geometry;
 }
 
-// Cylindrical paper-label wrap for the canister body — the roll's name,
-// date, and a "35mm FILM" line, wrapping around the can the way a real
-// canister's label does, rather than sitting flat on top of it.
-function createLabelWrapTexture(name: string, time: string) {
+// The label's heading font — matches the site's own heading typeface
+// (loaded globally via next/font as --font-heading, see globals.css) so the
+// canister reads as part of the same visual identity rather than a generic
+// system sans. Canvas text doesn't wait on webfont loading the way DOM text
+// does, so callers must confirm the font is actually ready (via
+// document.fonts.load) before the first paint, or it silently falls back to
+// the Georgia stack below.
+const LABEL_NAME_FONT = '"Playfair Display", Georgia, serif';
+const LABEL_SPINE_FONT = '"Helvetica Neue", Arial, sans-serif';
+
+// Cylindrical paper-label wrap for the canister body — the roll's name and
+// a "35mm FILM" line, wrapping around the can the way a real canister's
+// label does, rather than sitting flat on top of it. Draws onto whatever
+// canvas/context it's given so it can be called again once the label font
+// has actually finished loading.
+function paintLabelWrap(ctx: CanvasRenderingContext2D, w: number, h: number, name: string) {
+  ctx.clearRect(0, 0, w, h);
+
+  // Symmetric band layout — a color band at each edge flanking a cream
+  // field in the middle, all running the full height, with the text
+  // rotated to read up the can rather than around it. Since the texture
+  // repeats twice around the circumference (see repeat.set(2, 1) below),
+  // this pair of edge bands actually reads as two color bands alternating
+  // with two cream fields all the way around the can, rather than a single
+  // stripe — more color, and the name sits in the true middle of each
+  // repeat instead of being pushed off toward one edge.
+  const bandW = w * 0.32;
+  const fieldX0 = bandW;
+  const fieldX1 = w - bandW;
+
+  ctx.fillStyle = "#efe8d8";
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = "#2a5599";
+  ctx.fillRect(0, 0, bandW, h);
+  ctx.fillStyle = "#b3541e";
+  ctx.fillRect(fieldX1, 0, bandW, h);
+
+  // Thin gold pinstripe accents at each band/field seam.
+  ctx.fillStyle = "#f0c56b";
+  ctx.fillRect(fieldX0 - 4, 0, 4, h);
+  ctx.fillRect(fieldX1, 0, 4, h);
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  // "35mm FILM", rotated upright in the left band.
+  ctx.save();
+  ctx.translate(bandW / 2, h / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.font = `bold 30px ${LABEL_SPINE_FONT}`;
+  ctx.fillStyle = "#f5ede0";
+  ctx.fillText("35mm FILM", 0, 0);
+  ctx.restore();
+
+  // Roll name, rotated upright, centered on the full texture width and
+  // filling most of the field's height.
+  ctx.save();
+  ctx.translate(w / 2, h / 2);
+  ctx.rotate(-Math.PI / 2);
+  let nameSize = 96;
+  const upperName = name.toUpperCase();
+  ctx.font = `bold ${nameSize}px ${LABEL_NAME_FONT}`;
+  while (ctx.measureText(upperName).width > h * 0.9 && nameSize > 34) {
+    nameSize -= 2;
+    ctx.font = `bold ${nameSize}px ${LABEL_NAME_FONT}`;
+  }
+  ctx.fillStyle = "#1c1712";
+  ctx.fillText(upperName, 0, 0);
+  ctx.restore();
+}
+
+function createLabelWrapTexture(name: string) {
   const w = 640;
   const h = 500;
   const canvas = document.createElement("canvas");
@@ -280,65 +395,23 @@ function createLabelWrapTexture(name: string, time: string) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
 
-  // Vertical band layout — a narrow color spine plus a wider main field,
-  // both running the full height, with the text rotated to read up the
-  // can rather than around it. That's how the reference labels are laid
-  // out; a horizontal band split read as facing the wrong way.
-  const stripeW = w * 0.24;
-  ctx.fillStyle = "#2a5599";
-  ctx.fillRect(0, 0, stripeW, h);
-  ctx.fillStyle = "#efe8d8";
-  ctx.fillRect(stripeW, 0, w - stripeW, h);
-
-  ctx.strokeStyle = "rgba(20,18,16,0.4)";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(stripeW, 0);
-  ctx.lineTo(stripeW, h);
-  ctx.stroke();
-
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-
-  // "35mm FILM", rotated upright in the spine.
-  ctx.save();
-  ctx.translate(stripeW / 2, h / 2);
-  ctx.rotate(-Math.PI / 2);
-  ctx.font = "bold 30px Arial, Helvetica, sans-serif";
-  ctx.fillStyle = "#f5ede0";
-  ctx.fillText("35mm FILM", 0, 0);
-  ctx.restore();
-
-  // Roll name, rotated upright, filling most of the main field's height.
-  ctx.save();
-  ctx.translate(stripeW + (w - stripeW) * 0.4, h / 2);
-  ctx.rotate(-Math.PI / 2);
-  let nameSize = 92;
-  const upperName = name.toUpperCase();
-  ctx.font = `bold ${nameSize}px Arial, Helvetica, sans-serif`;
-  while (ctx.measureText(upperName).width > h * 0.88 && nameSize > 34) {
-    nameSize -= 2;
-    ctx.font = `bold ${nameSize}px Arial, Helvetica, sans-serif`;
-  }
-  ctx.fillStyle = "#1c1712";
-  ctx.fillText(upperName, 0, 0);
-  ctx.restore();
-
-  // Date, rotated the same way, in its own column near the right edge.
-  ctx.save();
-  ctx.translate(stripeW + (w - stripeW) * 0.82, h / 2);
-  ctx.rotate(-Math.PI / 2);
-  ctx.font = "26px Arial, Helvetica, sans-serif";
-  ctx.fillStyle = "rgba(28,23,18,0.65)";
-  ctx.fillText(formatRollDate(time).toUpperCase(), 0, 0);
-  ctx.restore();
+  paintLabelWrap(ctx, w, h, name);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.ClampToEdgeWrapping;
   texture.repeat.set(2, 1);
+  // CylinderGeometry's default UV mapping puts u = 0 at the point facing
+  // +Z — which, given this scene's camera, is the face pointing straight
+  // at the viewer — and with repeat = 2 that same u = 0 point samples
+  // canvas x = 0, the seam between the two color bands, not the name in
+  // the canvas's middle. Shifting the sample phase by half a repeat moves
+  // the canvas's horizontal center (where the name is painted) onto that
+  // front (and, symmetrically, back) facing point instead, so the name
+  // actually reads facing the camera rather than turned 90° to the side.
+  texture.offset.set(0.5, 0);
   texture.colorSpace = THREE.SRGBColorSpace;
-  return texture;
+  return { canvas, ctx, texture };
 }
 
 function formatRollDate(time: string) {
@@ -357,8 +430,30 @@ function Canister({
   showLabel: boolean;
 }) {
   const userData = { rollIndex };
-  const labelTexture = useMemo(() => createLabelWrapTexture(name, time), [name, time]);
+  const label = useMemo(() => createLabelWrapTexture(name), [name]);
   const plasticRoughness = useMemo(() => createPlasticRoughnessMap(), []);
+
+  // Canvas text doesn't wait for webfonts the way DOM text does, so the
+  // first paint above may have silently fallen back to Georgia if
+  // "Playfair Display" wasn't parsed yet. Once the browser confirms it's
+  // actually loaded, repaint the same canvas with the real font.
+  useEffect(() => {
+    if (!label) return;
+    let cancelled = false;
+    document.fonts
+      .load(`bold 96px ${LABEL_NAME_FONT}`)
+      .then(() => {
+        if (cancelled) return;
+        paintLabelWrap(label.ctx, label.canvas.width, label.canvas.height, name);
+        label.texture.needsUpdate = true;
+      })
+      .catch(() => {
+        // Font failed to load — the Georgia fallback painted above stands.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [label, name]);
 
   // ISO 1007: a single 25mm-diameter body (39.4mm tall) with narrower
   // 10mm-diameter spool extensions projecting above (4.5mm) and below
@@ -398,8 +493,8 @@ function Canister({
       <mesh position={[0, bodyLabelY, 0]} userData={userData}>
         <cylinderGeometry args={[CAN_RADIUS, CAN_RADIUS, bodyLabelH, 48]} />
         <meshStandardMaterial
-          map={labelTexture}
-          color={labelTexture ? "#ffffff" : "#e8e3d5"}
+          map={label?.texture}
+          color={label ? "#ffffff" : "#e8e3d5"}
           roughness={0.8}
           metalness={0.05}
         />
@@ -524,11 +619,12 @@ function FilmStrip({ rs }: { rs: RollState }) {
   }, []);
 
   return (
-    <group>
+    <group position={[0, STRIP_Y_OFFSET, 0]}>
       <mesh geometry={wrapGeometry} userData={{ rollIndex: index }}>
         <meshStandardMaterial
           map={wrapTexture}
           color={wrapTexture ? "#ffffff" : "#221d17"}
+          vertexColors
           roughness={0.6}
           metalness={0.05}
           side={THREE.DoubleSide}
@@ -543,6 +639,7 @@ function FilmStrip({ rs }: { rs: RollState }) {
         <meshStandardMaterial
           map={ribbonTexture}
           color={ribbonTexture ? "#ffffff" : "#221d17"}
+          vertexColors
           roughness={0.6}
           metalness={0.05}
           side={THREE.DoubleSide}
