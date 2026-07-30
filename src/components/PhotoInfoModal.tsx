@@ -53,6 +53,11 @@ export default function PhotoInfoModal({
   }, []);
 
   const date = formatDate(photo.time);
+  // Landscape photos are width-limited by the card, not height-limited like
+  // portrait ones — a fixed max-w-sm left them looking small since it capped
+  // the dimension that actually had room to grow. Give landscape photos a
+  // wider card (and a bit more vertical headroom to match) instead.
+  const isLandscape = photo.width >= photo.height;
 
   return (
     <div
@@ -62,9 +67,9 @@ export default function PhotoInfoModal({
       onClick={handleClose}
     >
       <div
-        className={`w-full max-w-sm border border-white/15 bg-black p-6 text-center transition-all duration-200 ease-out ${
-          visible ? "translate-y-0 scale-100 opacity-100" : "translate-y-2 scale-95 opacity-0"
-        }`}
+        className={`w-full border border-white/15 bg-black p-6 text-center transition-all duration-200 ease-out ${
+          isLandscape ? "max-w-3xl" : "max-w-md"
+        } ${visible ? "translate-y-0 scale-100 opacity-100" : "translate-y-2 scale-95 opacity-0"}`}
         onClick={(e) => e.stopPropagation()}
       >
         <Image
@@ -72,7 +77,7 @@ export default function PhotoInfoModal({
           alt={photo.name}
           width={photo.width}
           height={photo.height}
-          className="mx-auto mb-4 h-auto max-h-[50vh] w-auto"
+          className={`mx-auto mb-4 h-auto w-auto ${isLandscape ? "max-h-[75vh]" : "max-h-[62vh]"}`}
         />
         <h3 className="font-heading text-lg tracking-wide">{photo.name}</h3>
         <p className="mt-1 text-xs tracking-[0.15em] text-muted uppercase">

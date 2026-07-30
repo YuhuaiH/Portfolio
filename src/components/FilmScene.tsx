@@ -191,7 +191,7 @@ function createFilmBaseTexture() {
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
 
-  ctx.fillStyle = "#221d17";
+  ctx.fillStyle = "#1c1712";
   ctx.fillRect(0, 0, w, h);
   for (let i = 0; i < 300; i++) {
     ctx.fillStyle = `rgba(0,0,0,${Math.random() * 0.15})`;
@@ -202,7 +202,7 @@ function createFilmBaseTexture() {
     ctx.fillRect(Math.random() * w, Math.random() * h, 1, 1);
   }
 
-  ctx.fillStyle = "rgba(255,255,255,0.06)";
+  ctx.fillStyle = "rgba(183, 126, 126, 0.06)";
   ctx.fillRect(w * 0.46, h * 0.05, w * 0.08, h * 0.045);
   ctx.fillRect(w * 0.46, h * 0.905, w * 0.08, h * 0.045);
 
@@ -349,7 +349,7 @@ function paintLabelWrap(ctx: CanvasRenderingContext2D, w: number, h: number, nam
   ctx.fillRect(0, 0, w, h);
   ctx.fillStyle = "#2a5599";
   ctx.fillRect(0, 0, bandW, h);
-  ctx.fillStyle = "#b3541e";
+  ctx.fillStyle = "#008250";
   ctx.fillRect(fieldX1, 0, bandW, h);
 
   // Thin gold pinstripe accents at each band/field seam.
@@ -475,7 +475,7 @@ function Canister({
 
   const plastic = (roughness = 0.3) => (
     <meshStandardMaterial
-      color="#141414"
+      color="#232121"
       roughnessMap={plasticRoughness}
       roughness={roughness}
       metalness={0.15}
