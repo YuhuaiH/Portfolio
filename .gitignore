@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# generated photo thumbnails/previews (see scripts/generate-photo-derivatives.mjs)
+/public/photos-cache/
+
 # production
 /build
 

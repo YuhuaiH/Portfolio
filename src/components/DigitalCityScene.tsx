@@ -304,7 +304,7 @@ function BillboardSlideshow({
   photos: Photo[];
   onSelect: (photo: Photo) => void;
 }) {
-  const urls = useMemo(() => photos.map((p) => `${BASE_PATH}${p.src}`), [photos]);
+  const urls = useMemo(() => photos.map((p) => `${BASE_PATH}${p.previewSrc}`), [photos]);
   const textures = useTexture(urls);
 
   useEffect(() => {

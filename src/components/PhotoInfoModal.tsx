@@ -73,7 +73,7 @@ export default function PhotoInfoModal({
         onClick={(e) => e.stopPropagation()}
       >
         <Image
-          src={`${BASE_PATH}${photo.src}`}
+          src={`${BASE_PATH}${photo.previewSrc}`}
           alt={photo.name}
           width={photo.width}
           height={photo.height}
@@ -83,12 +83,24 @@ export default function PhotoInfoModal({
         <p className="mt-1 text-xs tracking-[0.15em] text-muted uppercase">
           {date} · {photo.type === "film" ? photo.filmRoll : "Digital"}
         </p>
-        <button
-          onClick={handleClose}
-          className="mt-5 text-xs tracking-[0.15em] text-muted uppercase hover:text-foreground"
-        >
-          Close
-        </button>
+        <div className="mt-5 flex items-center justify-center gap-4">
+          <a
+            href={`${BASE_PATH}${photo.src}`}
+            download
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="text-xs tracking-[0.15em] text-muted uppercase hover:text-foreground"
+          >
+            Full resolution
+          </a>
+          <button
+            onClick={handleClose}
+            className="text-xs tracking-[0.15em] text-muted uppercase hover:text-foreground"
+          >
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );

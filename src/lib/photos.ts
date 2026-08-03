@@ -5,6 +5,7 @@ import { imageSize } from "image-size";
 const PHOTOS_DIR = path.join(process.cwd(), "public", "photos");
 const FILM_DIR = path.join(PHOTOS_DIR, "film");
 const DIGITAL_DIR = path.join(PHOTOS_DIR, "digital");
+const DERIVATIVES_DIR = path.join(process.cwd(), "public", "photos-cache");
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
 const ROLL_META_FILE = "roll.json";
 
@@ -12,7 +13,15 @@ export type PhotoType = "film" | "digital";
 
 export type Photo = {
   id: string;
+  // Full-resolution original — only for a dedicated high-quality view or
+  // download, never for on-screen thumbnails/previews (those cost far more
+  // bandwidth than the display size warrants). See thumbSrc/previewSrc.
   src: string;
+  // Downscaled derivative for small on-screen uses (film-strip frames).
+  thumbSrc: string;
+  // Downscaled derivative for larger on-screen uses (the detail modal, the
+  // digital scene's billboard) that still don't need full resolution.
+  previewSrc: string;
   width: number;
   height: number;
   name: string;
@@ -24,6 +33,19 @@ export type Photo = {
   // is what getFilmRolls groups by, not the name itself.
   filmRollId?: string;
 };
+
+// Derivatives are generated ahead of time by
+// scripts/generate-photo-derivatives.mjs (run via predev/prebuild) into
+// public/photos-cache/<variant>/<relative path under public/photos>.webp.
+// Falls back to the full-resolution src if a derivative hasn't been
+// generated yet, so the site still works (just heavier) if that script
+// hasn't run.
+function derivativeSrc(relPath: string, variant: "thumb" | "preview", fallbackSrc: string) {
+  const relWebp = relPath.replace(/\.[^./\\]+$/, ".webp");
+  const absPath = path.join(DERIVATIVES_DIR, variant, relWebp);
+  if (!fs.existsSync(absPath)) return fallbackSrc;
+  return encodeURI(`/photos-cache/${variant}/${relWebp}`);
+}
 
 // EXIF orientations 5-8 are a 90°/270° rotation, which browsers apply
 // automatically when decoding the image (so the pixels a <canvas>/WebGL
@@ -77,9 +99,14 @@ function readDigitalPhoto(dir: string, imageFile: string, siblingEntries: string
 
   const { width, height } = readImageSize(imagePath, `public/photos/digital/${imageFile}`);
 
+  const relPath = `digital/${imageFile}`;
+  const src = `/photos/digital/${imageFile}`;
+
   return {
     id,
-    src: `/photos/digital/${imageFile}`,
+    src,
+    thumbSrc: derivativeSrc(relPath, "thumb", src),
+    previewSrc: derivativeSrc(relPath, "preview", src),
     width,
     height,
     name,
@@ -125,9 +152,14 @@ function readFilmRollFolder(rollDir: string, folderName: string): Photo[] {
       `public/photos/film/${folderName}/${file}`
     );
 
+    const relPath = `film/${folderName}/${file}`;
+    const src = encodeURI(`/photos/film/${folderName}/${file}`);
+
     return {
       id: `${folderName}/${file}`,
-      src: encodeURI(`/photos/film/${folderName}/${file}`),
+      src,
+      thumbSrc: derivativeSrc(relPath, "thumb", src),
+      previewSrc: derivativeSrc(relPath, "preview", src),
       width,
       height,
       name: file.replace(/\.[^./\\]+$/, ""),

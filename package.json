@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/generate-photo-derivatives.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/generate-photo-derivatives.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -25,6 +27,7 @@
     "@types/three": "^0.185.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.11",
+    "sharp": "^0.35.3",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

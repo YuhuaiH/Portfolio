@@ -545,7 +545,7 @@ function Frame({
   clipPlane: THREE.Plane;
   rollIndex: number;
 }) {
-  const texture = useTexture(`${BASE_PATH}${photo.src}`);
+  const texture = useTexture(`${BASE_PATH}${photo.thumbSrc}`);
   texture.colorSpace = THREE.SRGBColorSpace;
 
   // Portrait photos get turned sideways to fill the same landscape frame
