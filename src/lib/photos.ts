@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { cache } from "react";
 import { imageSize } from "image-size";
 
 const PHOTOS_DIR = path.join(process.cwd(), "public", "photos");
@@ -171,7 +172,10 @@ function readFilmRollFolder(rollDir: string, folderName: string): Photo[] {
   });
 }
 
-export function getPhotos(): Photo[] {
+// Wrapped in React's cache() since both the root layout (for SceneHeader's
+// counts) and each page now call this — memoizing means the filesystem
+// scan/image-size reads only happen once per render pass instead of twice.
+export const getPhotos = cache((): Photo[] => {
   const photos: Photo[] = [];
 
   if (fs.existsSync(FILM_DIR)) {
@@ -193,7 +197,7 @@ export function getPhotos(): Photo[] {
   }
 
   return photos.sort((a, b) => Date.parse(b.time) - Date.parse(a.time));
-}
+});
 
 export type FilmRoll = {
   id: string;
@@ -202,7 +206,7 @@ export type FilmRoll = {
   photos: Photo[];
 };
 
-export function getFilmRolls(photos: Photo[]): FilmRoll[] {
+export const getFilmRolls = cache((photos: Photo[]): FilmRoll[] => {
   // Group by filmRollId (the folder), not filmRoll (the display name) —
   // two separate rolls can share a name, and each still needs its own
   // canister rather than getting merged into one. Photos within a roll all
@@ -232,4 +236,4 @@ export function getFilmRolls(photos: Photo[]): FilmRoll[] {
     const latest = (roll: Photo[]) => Math.max(...roll.map((p) => Date.parse(p.time)));
     return latest(b.photos) - latest(a.photos);
   });
-}
+});

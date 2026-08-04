@@ -7,7 +7,7 @@ import PhotoInfoModal from "./PhotoInfoModal";
 
 const DigitalCityScene = dynamic(() => import("./DigitalCityScene"), {
   ssr: false,
-  loading: () => <div className="h-[720px] w-full animate-pulse bg-white/5 sm:h-[860px]" />,
+  loading: () => <div className="mt-6 h-[560px] w-full animate-pulse bg-white/5 sm:mt-8 sm:h-[680px]" />,
 });
 
 export default function DigitalCityExplorer({ photos }: { photos: Photo[] }) {
@@ -15,13 +15,9 @@ export default function DigitalCityExplorer({ photos }: { photos: Photo[] }) {
 
   return (
     <section className="mb-16">
-      <div className="mb-2 px-6 text-center sm:px-12">
-        <h2 className="font-heading text-lg tracking-wide">Digital</h2>
-        <p className="text-xs tracking-[0.15em] text-muted uppercase">
-          {photos.length} photo{photos.length === 1 ? "" : "s"} · click the billboard for details
-        </p>
-      </div>
-      <div className="h-[720px] w-full bg-black sm:h-[860px]">
+      {/* The heading + film/digital switcher live in SceneHeader (rendered
+          once in layout.tsx) rather than here. */}
+      <div className="mt-6 h-[560px] w-full bg-black sm:mt-8 sm:h-[680px]">
         <DigitalCityScene photos={photos} onSelect={setSelectedPhoto} />
       </div>
       {selectedPhoto && (

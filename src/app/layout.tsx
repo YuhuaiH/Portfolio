@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import { Cardo, Playfair_Display } from "next/font/google";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import PageTransition from "@/components/PageTransition";
+import SceneHeader from "@/components/SceneHeader";
+import { FilmFocusProvider } from "@/components/FilmFocusProvider";
+import { getPhotos, getFilmRolls } from "@/lib/photos";
 import site from "@/data/site.json";
 import "./globals.css";
 
@@ -26,6 +30,10 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const photos = getPhotos();
+  const filmRolls = getFilmRolls(photos);
+  const digitalCount = photos.filter((photo) => photo.type === "digital").length;
+
   return (
     <html
       lang="en"
@@ -33,7 +41,12 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <SiteHeader />
-        <main className="flex-1">{children}</main>
+        <FilmFocusProvider>
+          <main className="relative flex-1">
+            <SceneHeader filmRolls={filmRolls} digitalCount={digitalCount} />
+            <PageTransition>{children}</PageTransition>
+          </main>
+        </FilmFocusProvider>
         <SiteFooter />
       </body>
     </html>

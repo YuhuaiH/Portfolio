@@ -17,7 +17,7 @@ const links = [
 
 export default function SiteHeader() {
   return (
-    <header className="flex flex-col items-center gap-4 px-6 py-12 text-center sm:py-16">
+    <header className="flex flex-col items-center gap-2 px-6 py-6 text-center sm:py-8">
       <Link href="/" className="inline-block">
         <Image
           src={`${BASE_PATH}/resources/logo.png`}
