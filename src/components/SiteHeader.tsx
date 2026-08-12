@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import site from "@/data/site.json";
+import SiteNav from "./SiteNav";
 
 // next/image never applies basePath to a hardcoded src when
 // images.unoptimized is on (required for static export) — the
@@ -9,15 +10,9 @@ import site from "@/data/site.json";
 // DigitalCityScene.tsx.
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
-const links = [
-  { href: "/", label: "Work" },
-  { href: "/about", label: "About" },
-  { href: "/contact", label: "Contact" },
-];
-
 export default function SiteHeader() {
   return (
-    <header className="flex flex-col items-center gap-2 px-6 py-6 text-center sm:py-8">
+    <header className="flex flex-col items-center gap-4 px-6 py-8 text-center sm:py-10">
       <Link href="/" className="inline-block">
         <Image
           src={`${BASE_PATH}/resources/logo.png`}
@@ -25,19 +20,10 @@ export default function SiteHeader() {
           width={1326}
           height={209}
           priority
-          className="h-9 w-auto sm:h-11"
+          className="h-11 w-auto sm:h-14"
         />
       </Link>
-      <nav className="flex items-center text-xs tracking-[0.2em] uppercase text-muted">
-        {links.map((link, i) => (
-          <span key={link.href} className="flex items-center">
-            {i > 0 && <span className="mx-3 text-muted">/</span>}
-            <Link href={link.href} className="hover:text-foreground">
-              {link.label}
-            </Link>
-          </span>
-        ))}
-      </nav>
+      <SiteNav />
     </header>
   );
 }

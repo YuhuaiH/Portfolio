@@ -1,0 +1,12 @@
+{
+  "heading": "About",
+  "boxes": [
+    { "heading": "{{name}}", "text": "{{role}}" },
+    { "heading": "Bio", "text": "This guy is too lazy to write his bio." },
+    { "heading": "Contact", "text": "[{{email}}](mailto:{{email}})" },
+    {
+      "heading": "Elsewhere",
+      "text": "[Instagram](https://instagram.com/yuhuaih) · [LinkedIn](https://www.linkedin.com/in/yuhuai-huang-07980b205/)"
+    }
+  ]
+}
