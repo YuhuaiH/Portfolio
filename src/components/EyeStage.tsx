@@ -46,6 +46,21 @@ const MAX_PITCH_DEG = 9;
 // the eye keeps looking toward the cursor even once it's left the canvas.
 const SENSITIVITY_PX = 380;
 const TRACK_LERP = 0.12;
+// A deliberate "look there now" snap for the click reaction below — much
+// snappier than the ambient cursor-follow, so it reads as the eye reacting
+// to the click rather than just continuing to drift toward it.
+const REACTION_LERP = 0.35;
+// How far the pupil grows at its most dilated, and how quickly it eases
+// there and back — a startle response to being clicked, not a slow fade.
+const PUPIL_DILATE_SCALE = 1.55;
+const PUPIL_LERP = 0.18;
+
+// Set while a nav card is being clicked: the direction (in the same
+// [-1, 1] per-axis range as the yaw/pitch clamps below) the eye should
+// snap to look toward — e.g. the corner the clicked card sits in — plus
+// whether the pupil should dilate. Passed down from EyeHero, which knows
+// about the click; EyeStage itself has no notion of navigation.
+export type EyeReaction = { dir: readonly [number, number]; dilate: boolean } | null;
 
 function hexToRgb(hex: string): [number, number, number] {
   const n = parseInt(hex.slice(1), 16);
@@ -114,7 +129,7 @@ function createGlintTexture() {
   return new THREE.CanvasTexture(canvas);
 }
 
-function Eyeball() {
+function Eyeball({ pupilRef }: { pupilRef: React.RefObject<THREE.Mesh | null> }) {
   const fbx = useLoader(FBXLoader, MODEL_PATH);
   const glintTexture = useMemo(() => createGlintTexture(), []);
   const [scleraDiffuse, scleraBump, irisDiffuse, irisBump] = useTexture([
@@ -215,7 +230,7 @@ function Eyeball() {
           swings the two around the eye's pivot by different effective
           radii — a too-tight radius here left a sliver of the real hole
           uncovered (showing as a bright crescent) once rotated off-center. */}
-      <mesh position={[0, 0, -1.01]}>
+      <mesh ref={pupilRef} position={[0, 0, -1.01]}>
         <circleGeometry args={[0.165, 48]} />
         <meshStandardMaterial color="#050505" roughness={0.25} side={THREE.DoubleSide} />
       </mesh>
@@ -242,13 +257,29 @@ function Eyeball() {
 }
 
 // Rotates the whole eyeball (sclera + iris together, as a real eye rotates
-// in its socket) to track the cursor anywhere on the page.
-function EyeRig() {
+// in its socket) to track the cursor anywhere on the page — or, while
+// `reaction` is set, snaps to look in a given direction and dilates the
+// pupil instead, as a startle response to a nav card being clicked.
+function EyeRig({ reaction, onReady }: { reaction: EyeReaction; onReady?: () => void }) {
   const groupRef = useRef<THREE.Group>(null);
+  const pupilRef = useRef<THREE.Mesh>(null);
+  const pupilScaleRef = useRef(1);
   const { gl } = useThree();
   const offsetRef = useRef({ dx: 0, dy: 0 });
   const targetQuatRef = useRef(new THREE.Quaternion());
   const eulerRef = useRef(new THREE.Euler(0, 0, 0, "YXZ"));
+
+  // EyeRig sits inside the Suspense boundary below (its child, Eyeball,
+  // is what actually suspends on the model/texture loads) — so this
+  // effect firing IS the "the eye actually has something to show now"
+  // signal, distinct from EyeStage's own mount, which happens well
+  // before the FBX/textures resolve. Lets a parent (EyeHero) sync its
+  // entrance transition to when the eye is genuinely ready instead of
+  // guessing at a fixed delay.
+  useEffect(() => {
+    onReady?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     function onMove(e: PointerEvent) {
@@ -266,32 +297,57 @@ function EyeRig() {
     const group = groupRef.current;
     if (!group) return;
 
-    const { dx, dy } = offsetRef.current;
-    const yaw =
-      THREE.MathUtils.clamp(dx / SENSITIVITY_PX, -1, 1) * THREE.MathUtils.degToRad(MAX_YAW_DEG);
-    // Negated: the rig's natural rest orientation faces -Z (toward the
-    // camera on this side), so a positive X-rotation tilts that forward
-    // vector up rather than down — the opposite of the more common +Z
-    // convention pitch would otherwise assume.
-    const pitch =
-      THREE.MathUtils.clamp(-dy / SENSITIVITY_PX, -1, 1) * THREE.MathUtils.degToRad(MAX_PITCH_DEG);
+    let yaw: number;
+    let pitch: number;
+    if (reaction) {
+      yaw = reaction.dir[0] * THREE.MathUtils.degToRad(MAX_YAW_DEG);
+      pitch = reaction.dir[1] * THREE.MathUtils.degToRad(MAX_PITCH_DEG);
+    } else {
+      const { dx, dy } = offsetRef.current;
+      yaw =
+        THREE.MathUtils.clamp(dx / SENSITIVITY_PX, -1, 1) * THREE.MathUtils.degToRad(MAX_YAW_DEG);
+      // Negated: the rig's natural rest orientation faces -Z (toward the
+      // camera on this side), so a positive X-rotation tilts that forward
+      // vector up rather than down — the opposite of the more common +Z
+      // convention pitch would otherwise assume.
+      pitch =
+        THREE.MathUtils.clamp(-dy / SENSITIVITY_PX, -1, 1) *
+        THREE.MathUtils.degToRad(MAX_PITCH_DEG);
+    }
 
     eulerRef.current.set(pitch, yaw, 0);
     targetQuatRef.current.setFromEuler(eulerRef.current);
-    group.quaternion.slerp(targetQuatRef.current, TRACK_LERP);
+    group.quaternion.slerp(targetQuatRef.current, reaction ? REACTION_LERP : TRACK_LERP);
+
+    const targetPupilScale = reaction?.dilate ? PUPIL_DILATE_SCALE : 1;
+    pupilScaleRef.current = THREE.MathUtils.lerp(
+      pupilScaleRef.current,
+      targetPupilScale,
+      PUPIL_LERP
+    );
+    pupilRef.current?.scale.setScalar(pupilScaleRef.current);
   });
 
   return (
     <group ref={groupRef}>
-      <Eyeball />
+      <Eyeball pupilRef={pupilRef} />
     </group>
   );
 }
 
 // A single large eyeball, built from the real-world eye asset in
 // public/models/eye, that rotates to stare at the cursor anywhere on the
-// page. Purely decorative — no click/drag interaction.
-export default function EyeStage() {
+// page. `reaction`, set by a parent that knows about clicks elsewhere on
+// the page (e.g. EyeHero's nav cards), overrides that cursor-follow with a
+// snap-and-dilate response instead. `onReady` fires once the model and
+// textures have actually loaded and the eye has something to show.
+export default function EyeStage({
+  reaction = null,
+  onReady,
+}: {
+  reaction?: EyeReaction;
+  onReady?: () => void;
+}) {
   return (
     <Canvas dpr={[1, 2]} gl={{ antialias: true, alpha: true }}>
       {/* The model's iris aperture opens toward -Z in its own raw
@@ -311,7 +367,7 @@ export default function EyeStage() {
       <directionalLight position={[2, -1, -2]} intensity={0.22} color="#dfe8ff" />
       <pointLight position={[-0.6, 0.8, -2.4]} intensity={0.6} distance={6} />
       <Suspense fallback={null}>
-        <EyeRig />
+        <EyeRig reaction={reaction} onReady={onReady} />
       </Suspense>
     </Canvas>
   );

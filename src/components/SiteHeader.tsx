@@ -12,7 +12,7 @@ const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 export default function SiteHeader() {
   return (
-    <header className="flex flex-col items-center gap-4 px-6 py-8 text-center sm:py-10">
+    <header className="flex flex-col items-center gap-3 px-6 py-5 text-center sm:py-6">
       <Link href="/" className="inline-block">
         <Image
           src={`${BASE_PATH}/resources/logo.png`}
@@ -20,7 +20,7 @@ export default function SiteHeader() {
           width={1326}
           height={209}
           priority
-          className="h-11 w-auto sm:h-14"
+          className="h-14 w-auto sm:h-20"
         />
       </Link>
       <SiteNav />

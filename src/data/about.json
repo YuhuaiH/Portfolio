@@ -1,12 +1,8 @@
-{
-  "heading": "About",
-  "boxes": [
-    { "heading": "{{name}}", "text": "{{role}}" },
-    { "heading": "Bio", "text": "This guy is too lazy to write his bio." },
-    { "heading": "Contact", "text": "[{{email}}](mailto:{{email}})" },
-    {
-      "heading": "Elsewhere",
-      "text": "[Instagram](https://instagram.com/yuhuaih) · [LinkedIn](https://www.linkedin.com/in/yuhuai-huang-07980b205/)"
-    }
-  ]
-}
+[
+  { "type": "heading", "text": "About", "level": 1 },
+  { "type": "paragraph", "text": "This guy is too lazy to write his bio." },
+  {
+    "type": "paragraph",
+    "text": "For bookings and inquiries, reach out at [{{email}}](mailto:{{email}})."
+  }
+]

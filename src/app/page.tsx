@@ -1,22 +1,12 @@
-import FilmRollsExplorer from "@/components/FilmRollsExplorer";
-import { getPhotos, getFilmRolls } from "@/lib/photos";
+import homeData from "@/data/home.json";
+import EyeHero from "@/components/EyeHero";
 
+// No page-specific <title>/<description> here — the root layout's already
+// read exactly right for "/" (site name — role), so this just inherits it.
 export default function Home() {
-  const photos = getPhotos();
-  const filmRolls = getFilmRolls(photos);
-
   return (
-    <div className="pb-16">
-      {filmRolls.length > 0 ? (
-        <FilmRollsExplorer filmRolls={filmRolls} />
-      ) : (
-        // The heading + film/digital switcher are rendered globally (see
-        // SceneHeader in layout.tsx), so they're still visible/reachable
-        // here even with no rolls to show.
-        <p className="px-6 pt-24 text-center text-sm text-muted sm:px-12 sm:pt-28">
-          No film rolls yet — drop a folder into <code>public/photos/</code>.
-        </p>
-      )}
-    </div>
+    <section className="mx-auto max-w-5xl px-6 py-4 text-center sm:px-12">
+      <EyeHero boxes={homeData.boxes} />
+    </section>
   );
 }

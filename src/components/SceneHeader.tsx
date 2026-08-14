@@ -7,8 +7,8 @@ import { formatDate } from "./PhotoInfoModal";
 import { useFilmFocus } from "./FilmFocusProvider";
 
 const TABS = [
-  { href: "/", label: "Film", key: "film" },
-  { href: "/digital", label: "Digital", key: "digital" },
+  { href: "/work", label: "Film", key: "film" },
+  { href: "/work/digital", label: "Digital", key: "digital" },
 ] as const;
 
 // Matches each tab button's fixed width — the sliding highlight below is
@@ -32,7 +32,8 @@ export default function SceneHeader({
 }) {
   const pathname = usePathname();
   const { focusedIndex, setFocusedIndex } = useFilmFocus();
-  const active = pathname === "/digital" ? "digital" : pathname === "/" ? "film" : null;
+  const active =
+    pathname === "/work/digital" ? "digital" : pathname === "/work" ? "film" : null;
 
   if (!active) return null;
 
