@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node bold-recheck.mjs)",
+      "Bash(node -e ' *)",
+      "Bash(node bold-mobile.mjs)",
+      "Bash(find / -maxdepth 6 -iname \"chromium-cli*\" 2>/dev/null; npm ls -g --depth=0 2>/dev/null | grep -i chrom; echo done)",
+      "Read(//c//**)",
+      "Bash(node -e \"console.log\\(require.resolve\\('playwright'\\)\\)\")",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(curl -s http://localhost:3000/about)",
+      "Bash(curl -s http://localhost:3000/_next/static/css/*.css)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"http://localhost:3000/resources/logo%20Yuhuai.svg\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"http://localhost:3000/\")",
+      "Bash(curl -sI \"http://localhost:3000/resources/logo%20Yuhuai.svg\")",
+      "Bash(curl -s -o /dev/null -w \"home: %{http_code}\\\\n\" http://localhost:3000/)",
+      "WebFetch(domain:www.youtube.com)",
+      "Bash(node -e \"try { require.resolve\\('sharp'\\); console.log\\('sharp available'\\); } catch\\(e\\){ console.log\\('no sharp'\\); }\")"
+    ]
+  }
+}

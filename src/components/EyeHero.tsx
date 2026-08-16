@@ -55,6 +55,33 @@ const ICONS: Record<string, ReactNode> = {
   ),
 };
 
+// Wobbles each icon's straight vector paths into a slightly uneven,
+// hand-inked line — the one thing that reliably reads as "old" about a
+// glyph regardless of what shape it is, since the shapes themselves are
+// still plain geometric icons. Defined once, referenced by every Icon via
+// CSS `filter: url(#icon-ink)`; a 0×0 SVG so it never takes up layout
+// space of its own. feDisplacementMap needs an actual filter primitive
+// graph (not a data-URI background image) to distort existing vector
+// content rather than paint a texture on top of it, so this has to live
+// inline in the DOM rather than reuse the data-URI pattern used elsewhere
+// in this codebase for grain/scratches.
+function IconInkFilter() {
+  return (
+    <svg width="0" height="0" aria-hidden className="absolute">
+      <filter id="icon-ink" x="-30%" y="-30%" width="160%" height="160%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="4" result="noise" />
+        <feDisplacementMap
+          in="SourceGraphic"
+          in2="noise"
+          scale="0.9"
+          xChannelSelector="R"
+          yChannelSelector="G"
+        />
+      </filter>
+    </svg>
+  );
+}
+
 function Icon({ heading, className }: { heading: string; className: string }) {
   const path = ICONS[heading];
   if (!path) return null;
@@ -67,6 +94,7 @@ function Icon({ heading, className }: { heading: string; className: string }) {
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
+      style={{ filter: "url(#icon-ink)" }}
     >
       {path}
     </svg>
@@ -75,6 +103,36 @@ function Icon({ heading, className }: { heading: string; className: string }) {
 
 const CARD_CLASSES =
   "group relative flex w-full max-w-[21rem] items-stretch rounded-2xl border backdrop-blur-md transition-all duration-300 ease-out sm:w-80";
+
+// Fine paper-fiber grain (same feTurbulence + contrast-boost recipe as the
+// logo's grain in SiteHeader.tsx, just re-tiled smaller for the card's
+// scale) plus two soft brown blotches standing in for foxing — the
+// age-spot staining real old paper picks up, concentrated unevenly rather
+// than as a uniform tint. multiply blend so both darken into the card's
+// existing glass gradient instead of sitting on top of it as a flat layer.
+// Its own inset-0 span with `rounded-2xl overflow-hidden` clips the grain
+// tile to the card's shape without needing overflow-hidden on the card
+// itself — see the note on Perforation below for why that's off-limits.
+const PAPER_GRAIN =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='50' height='50'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch' result='t'/%3E%3CfeColorMatrix in='t' type='saturate' values='0' result='g'/%3E%3CfeComponentTransfer in='g'%3E%3CfeFuncR type='linear' slope='2.2' intercept='-0.6'/%3E%3CfeFuncG type='linear' slope='2.2' intercept='-0.6'/%3E%3CfeFuncB type='linear' slope='2.2' intercept='-0.6'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E";
+
+function PaperTexture() {
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl mix-blend-multiply opacity-25"
+      style={{
+        backgroundImage: [
+          `url("${PAPER_GRAIN}")`,
+          "radial-gradient(ellipse 60% 45% at 22% 18%, rgba(74,54,24,0.22), transparent 65%)",
+          "radial-gradient(ellipse 55% 40% at 82% 78%, rgba(74,54,24,0.18), transparent 65%)",
+        ].join(", "),
+        backgroundSize: "50px 50px, cover, cover",
+        backgroundRepeat: "repeat, no-repeat, no-repeat",
+      }}
+    />
+  );
+}
 
 // The perforated tear-line between a ticket's stub and its main body: a
 // dashed rule plus two small circles punched through the card's own top
@@ -87,9 +145,9 @@ const CARD_CLASSES =
 function Perforation() {
   return (
     <div className="relative w-px shrink-0 self-stretch">
-      <div className="absolute inset-y-3 left-0 border-l border-dashed border-white/20" />
-      <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rounded-full bg-black" />
-      <div className="absolute -bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 rounded-full bg-black" />
+      <div className="absolute inset-y-3 left-0 border-l border-dashed border-accent-bright/30" />
+      <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rounded-full bg-background" />
+      <div className="absolute -bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 rounded-full bg-background" />
     </div>
   );
 }
@@ -107,7 +165,7 @@ function BoxContent({
     <div className="flex w-14 shrink-0 items-center justify-center sm:w-16">
       <Icon
         heading={box.heading}
-        className="h-6 w-6 text-muted/60 transition-colors duration-300 group-hover:text-[#ff8f5e]"
+        className="h-6 w-6 text-accent-bright/55 transition-colors duration-300 group-hover:text-accent-bright"
       />
     </div>
   );
@@ -117,17 +175,17 @@ function BoxContent({
         mirrored ? "text-right" : "text-left"
       }`}
     >
-      <p className="text-[11px] tracking-[0.15em] text-muted/70 uppercase">
+      <p className="text-[11px] font-bold tracking-[0.22em] text-accent-bright/85 uppercase">
         {renderInlineText(box.heading)}
       </p>
       {/* break-words: the email address on the Contact card is one long
           unbroken string with no spaces for the browser's default
           whitespace-only wrapping to break on — without this it just ran
           past the card's own edge instead of wrapping. */}
-      <p className="font-heading text-lg tracking-wide break-words text-foreground/90">
+      <p className="font-heading text-lg tracking-wide break-words text-foreground italic">
         {renderInlineText(box.text)}
         {showArrow && (
-          <span className="ml-1.5 inline-block -translate-x-1 text-[#ff8f5e] opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100">
+          <span className="ml-1.5 inline-block -translate-x-1 text-accent-bright opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100">
             →
           </span>
         )}
@@ -156,16 +214,23 @@ function NavCard({
   dir,
   pending,
   onNavigate,
+  onHoverStart,
 }: {
   box: Box & { href: string };
   mirrored: boolean;
   dir: readonly [number, number];
   pending: boolean;
   onNavigate: (href: string, dir: readonly [number, number]) => void;
+  onHoverStart: () => void;
 }) {
   return (
     <a
       href={box.href}
+      // Fires once per hover ("cursor just landed here"), not on every
+      // pointer move inside the card — pointerenter, unlike pointermove,
+      // only fires on entry, which is exactly the "detected a new subject"
+      // moment the eye's focus-pulse animation is meant to react to.
+      onPointerEnter={onHoverStart}
       onClick={(e) => {
         // Let modified/middle clicks behave like a normal link (new tab,
         // etc.) — only the plain-click path gets the reaction + delay.
@@ -175,10 +240,11 @@ function NavCard({
       }}
       className={`${CARD_CLASSES} cursor-pointer ${
         pending
-          ? "scale-95 border-[#ff8f5e]/60 bg-gradient-to-b from-white/[0.09] to-white/[0.02] shadow-[0_0_45px_-10px_rgba(255,143,94,0.55)]"
-          : "border-white/20 bg-gradient-to-b from-white/[0.07] to-white/[0.015] shadow-[0_0_30px_-16px_rgba(255,143,94,0.55)] hover:-translate-y-1 hover:scale-[1.04] hover:border-[#ff8f5e]/40 hover:from-white/[0.09] hover:shadow-[0_0_50px_-12px_rgba(255,143,94,0.45)] active:scale-95"
+          ? "scale-95 border-accent-bright/70 bg-gradient-to-b from-accent/[0.32] to-background/40 shadow-[0_0_55px_-8px_rgba(219,168,63,0.8)]"
+          : "border-accent-bright/30 bg-gradient-to-b from-accent/[0.2] to-background/30 shadow-[0_0_30px_-10px_rgba(219,168,63,0.6)] hover:-translate-y-1 hover:scale-[1.04] hover:border-accent-bright/65 hover:from-accent/[0.32] hover:shadow-[0_0_55px_-8px_rgba(219,168,63,0.8)] active:scale-95"
       }`}
     >
+      <PaperTexture />
       <BoxContent box={box} mirrored={mirrored} showArrow />
     </a>
   );
@@ -187,8 +253,9 @@ function NavCard({
 function InfoBox({ box, mirrored }: { box: Box; mirrored: boolean }) {
   return (
     <div
-      className={`${CARD_CLASSES} border-white/20 bg-gradient-to-b from-white/[0.07] to-white/[0.015] shadow-[0_0_26px_-16px_rgba(255,255,255,0.5)] hover:border-white/30`}
+      className={`${CARD_CLASSES} border-accent-bright/18 bg-gradient-to-b from-accent/[0.12] to-background/30 shadow-[0_0_22px_-14px_rgba(219,168,63,0.4)] hover:border-accent-bright/35`}
     >
+      <PaperTexture />
       <BoxContent box={box} mirrored={mirrored} />
     </div>
   );
@@ -249,6 +316,11 @@ export default function EyeHero({ boxes }: { boxes: Box[] }) {
   );
   const [eyeReady, setEyeReady] = useState(false);
   const [entered, setEntered] = useState(false);
+  // Bumped on every NavCard pointer-enter — EyeStage watches this counter
+  // (not a boolean) so hovering the *same* card twice in a row still
+  // retriggers the pulse, which a boolean flip wouldn't if it was already
+  // true from a still-playing previous pulse.
+  const [focusPulse, setFocusPulse] = useState(0);
 
   useEffect(() => {
     const fallback = setTimeout(() => setEyeReady(true), READY_FALLBACK_MS);
@@ -282,7 +354,24 @@ export default function EyeHero({ boxes }: { boxes: Box[] }) {
 
   return (
     <div className="relative mx-auto mt-6 flex max-w-sm flex-col items-center gap-5 sm:mt-8 sm:h-[440px] sm:max-w-5xl">
-      <div className="h-52 w-52 shrink-0 sm:absolute sm:top-1/2 sm:left-1/2 sm:h-60 sm:w-60 sm:-translate-x-1/2 sm:-translate-y-1/2">
+      <IconInkFilter />
+      <div className="relative h-52 w-52 shrink-0 sm:absolute sm:top-1/2 sm:left-1/2 sm:h-60 sm:w-60 sm:-translate-x-1/2 sm:-translate-y-1/2">
+        {/* A soft warm halo bleeding out well past the eye's own bounds —
+            candlelight around it rather than a hard-edged render sitting on
+            the page. Blurred, not animated in sync with anything else, but
+            given its own slow breathing pulse so it reads as ambient light
+            rather than a flat static glow; a separate layer behind the
+            canvas (not on the canvas/its wrapper) since blur+opacity here
+            must never touch the R3F container — see the comment below on
+            why that div can't pick up a stray transform/filter either. */}
+        <div
+          aria-hidden
+          className="animate-eye-glow pointer-events-none absolute -inset-10 rounded-full blur-3xl sm:-inset-16"
+          style={{
+            background:
+              "radial-gradient(circle, rgba(219,168,63,0.35) 0%, rgba(219,168,63,0) 70%)",
+          }}
+        />
         {/* The fade lives on this inner div, one level below the sizing/
             centering div above — never on an ancestor of the R3F Canvas.
             R3F measures its container's size via getBoundingClientRect,
@@ -296,7 +385,11 @@ export default function EyeHero({ boxes }: { boxes: Box[] }) {
             entered ? "opacity-100" : "opacity-0"
           }`}
         >
-          <EyeStage reaction={reaction} onReady={() => setEyeReady(true)} />
+          <EyeStage
+            reaction={reaction}
+            focusPulse={focusPulse}
+            onReady={() => setEyeReady(true)}
+          />
         </div>
       </div>
       {boxes.map((box, i) => {
@@ -318,6 +411,7 @@ export default function EyeHero({ boxes }: { boxes: Box[] }) {
                 dir={dir}
                 pending={pending?.href === box.href}
                 onNavigate={handleNavigate}
+                onHoverStart={() => setFocusPulse((n) => n + 1)}
               />
             ) : (
               <InfoBox box={box} mirrored={mirrored} />

@@ -5,6 +5,7 @@ import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
 import { PerspectiveCamera, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
+import { THEME } from "@/lib/theme";
 
 // next/image never applies basePath to a hardcoded src when
 // images.unoptimized is on (required for static export) — same fix as
@@ -54,6 +55,47 @@ const REACTION_LERP = 0.35;
 // there and back — a startle response to being clicked, not a slow fade.
 const PUPIL_DILATE_SCALE = 1.55;
 const PUPIL_LERP = 0.18;
+
+// A one-shot "autofocus rack" the pupil plays when the cursor lands on an
+// interactable element (see `focusPulse` below): a quick constrict, an
+// overshoot past resting size, then a settle back to normal — the same
+// three-beat motion a camera lens makes hunting for focus on a new
+// subject, rather than a plain dilate/contract. Durations are in seconds
+// (matches R3F's clock.elapsedTime); scales are relative to the pupil's
+// resting size (1).
+const PULSE_CONSTRICT_S = 0.09;
+const PULSE_OVERSHOOT_S = 0.13;
+const PULSE_SETTLE_S = 0.16;
+const PULSE_TOTAL_S = PULSE_CONSTRICT_S + PULSE_OVERSHOOT_S + PULSE_SETTLE_S;
+const PULSE_CONSTRICT_SCALE = 0.82;
+const PULSE_OVERSHOOT_SCALE = 1.14;
+
+// `elapsed` is seconds since the pulse started; returns 1 (no-op) once the
+// whole three-beat motion has finished playing.
+function focusPulseScale(elapsed: number): number {
+  if (elapsed < PULSE_CONSTRICT_S) {
+    return THREE.MathUtils.lerp(
+      1,
+      PULSE_CONSTRICT_SCALE,
+      THREE.MathUtils.smoothstep(elapsed, 0, PULSE_CONSTRICT_S)
+    );
+  }
+  if (elapsed < PULSE_CONSTRICT_S + PULSE_OVERSHOOT_S) {
+    return THREE.MathUtils.lerp(
+      PULSE_CONSTRICT_SCALE,
+      PULSE_OVERSHOOT_SCALE,
+      THREE.MathUtils.smoothstep(elapsed, PULSE_CONSTRICT_S, PULSE_CONSTRICT_S + PULSE_OVERSHOOT_S)
+    );
+  }
+  if (elapsed < PULSE_TOTAL_S) {
+    return THREE.MathUtils.lerp(
+      PULSE_OVERSHOOT_SCALE,
+      1,
+      THREE.MathUtils.smoothstep(elapsed, PULSE_CONSTRICT_S + PULSE_OVERSHOOT_S, PULSE_TOTAL_S)
+    );
+  }
+  return 1;
+}
 
 // Set while a nav card is being clicked: the direction (in the same
 // [-1, 1] per-axis range as the yaw/pitch clamps below) the eye should
@@ -180,11 +222,10 @@ function Eyeball({ pupilRef }: { pupilRef: React.RefObject<THREE.Mesh | null> })
           map: irisDiffuse,
           bumpMap: irisBump,
           bumpScale: 0.01,
-          // A dark, low-saturation navy — this multiplies the grayscale
-          // fiber texture directly, so it reads as a near-black iris with
-          // just a hint of blue in the brighter fibers, rather than the
-          // bright, saturated sky blue a lighter tint gave it.
-          color: "#ee4d13",
+          // Matches the site's accent red (src/data/theme.json), multiplied
+          // over the grayscale fiber texture so the brighter fibers read as
+          // a vivid crimson against a near-black core.
+          color: THEME.accentBright,
           roughness: 0.35,
         });
         // mesh.position is in the FBX's own raw coordinate space (this
@@ -260,7 +301,17 @@ function Eyeball({ pupilRef }: { pupilRef: React.RefObject<THREE.Mesh | null> })
 // in its socket) to track the cursor anywhere on the page — or, while
 // `reaction` is set, snaps to look in a given direction and dilates the
 // pupil instead, as a startle response to a nav card being clicked.
-function EyeRig({ reaction, onReady }: { reaction: EyeReaction; onReady?: () => void }) {
+// `focusPulse`, bumped by a parent each time the cursor lands on something
+// interactable, plays the autofocus-rack pupil pulse defined above.
+function EyeRig({
+  reaction,
+  focusPulse,
+  onReady,
+}: {
+  reaction: EyeReaction;
+  focusPulse?: number;
+  onReady?: () => void;
+}) {
   const groupRef = useRef<THREE.Group>(null);
   const pupilRef = useRef<THREE.Mesh>(null);
   const pupilScaleRef = useRef(1);
@@ -268,6 +319,12 @@ function EyeRig({ reaction, onReady }: { reaction: EyeReaction; onReady?: () => 
   const offsetRef = useRef({ dx: 0, dy: 0 });
   const targetQuatRef = useRef(new THREE.Quaternion());
   const eulerRef = useRef(new THREE.Euler(0, 0, 0, "YXZ"));
+  // Tracks which `focusPulse` value has already started its animation, and
+  // when (in clock.elapsedTime seconds) — so a change in the prop starts a
+  // fresh pulse exactly once, rather than replaying every frame the prop
+  // happens to still differ from some other stored value.
+  const pulseSeenRef = useRef(focusPulse ?? 0);
+  const pulseStartRef = useRef<number | null>(null);
 
   // EyeRig sits inside the Suspense boundary below (its child, Eyeball,
   // is what actually suspends on the model/texture loads) — so this
@@ -293,9 +350,23 @@ function EyeRig({ reaction, onReady }: { reaction: EyeReaction; onReady?: () => 
     return () => window.removeEventListener("pointermove", onMove);
   }, [gl]);
 
-  useFrame(() => {
+  useFrame((state) => {
     const group = groupRef.current;
     if (!group) return;
+
+    if ((focusPulse ?? 0) !== pulseSeenRef.current) {
+      pulseSeenRef.current = focusPulse ?? 0;
+      pulseStartRef.current = state.clock.elapsedTime;
+    }
+    let pulseScale = 1;
+    if (pulseStartRef.current !== null) {
+      const elapsed = state.clock.elapsedTime - pulseStartRef.current;
+      if (elapsed < PULSE_TOTAL_S) {
+        pulseScale = focusPulseScale(elapsed);
+      } else {
+        pulseStartRef.current = null;
+      }
+    }
 
     let yaw: number;
     let pitch: number;
@@ -319,7 +390,14 @@ function EyeRig({ reaction, onReady }: { reaction: EyeReaction; onReady?: () => 
     targetQuatRef.current.setFromEuler(eulerRef.current);
     group.quaternion.slerp(targetQuatRef.current, reaction ? REACTION_LERP : TRACK_LERP);
 
-    const targetPupilScale = reaction?.dilate ? PUPIL_DILATE_SCALE : 1;
+    // The click-reaction dilate wins outright over a still-playing focus
+    // pulse (rather than blending): `pulseScale` dips below 1 during its
+    // constrict beat, so max()-ing it against the dilate target would
+    // silently clip that dip to 1 whenever a dilate was also active, and
+    // multiplying the two would risk an oversized pupil on overlap. A
+    // click is a rarer, more deliberate event than a hover — simplest for
+    // it to just take over rather than mix.
+    const targetPupilScale = reaction?.dilate ? PUPIL_DILATE_SCALE : pulseScale;
     pupilScaleRef.current = THREE.MathUtils.lerp(
       pupilScaleRef.current,
       targetPupilScale,
@@ -339,13 +417,17 @@ function EyeRig({ reaction, onReady }: { reaction: EyeReaction; onReady?: () => 
 // public/models/eye, that rotates to stare at the cursor anywhere on the
 // page. `reaction`, set by a parent that knows about clicks elsewhere on
 // the page (e.g. EyeHero's nav cards), overrides that cursor-follow with a
-// snap-and-dilate response instead. `onReady` fires once the model and
-// textures have actually loaded and the eye has something to show.
+// snap-and-dilate response instead. `focusPulse`, bumped by a parent each
+// time the cursor lands on an interactable element, plays a quick
+// autofocus-style pupil pulse. `onReady` fires once the model and textures
+// have actually loaded and the eye has something to show.
 export default function EyeStage({
   reaction = null,
+  focusPulse,
   onReady,
 }: {
   reaction?: EyeReaction;
+  focusPulse?: number;
   onReady?: () => void;
 }) {
   return (
@@ -367,7 +449,7 @@ export default function EyeStage({
       <directionalLight position={[2, -1, -2]} intensity={0.22} color="#dfe8ff" />
       <pointLight position={[-0.6, 0.8, -2.4]} intensity={0.6} distance={6} />
       <Suspense fallback={null}>
-        <EyeRig reaction={reaction} onReady={onReady} />
+        <EyeRig reaction={reaction} focusPulse={focusPulse} onReady={onReady} />
       </Suspense>
     </Canvas>
   );

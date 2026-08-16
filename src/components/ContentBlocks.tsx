@@ -10,9 +10,9 @@ import { renderInlineText } from "@/lib/content";
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 const HEADING_CLASSES: Record<1 | 2 | 3, string> = {
-  1: "font-heading text-2xl tracking-wide",
-  2: "font-heading text-xl tracking-wide",
-  3: "font-heading text-lg tracking-wide",
+  1: "font-heading text-2xl tracking-wide italic",
+  2: "font-heading text-xl tracking-wide italic",
+  3: "font-heading text-lg tracking-wide italic",
 };
 
 const SPACER_CLASSES: Record<"sm" | "md" | "lg", string> = {
@@ -39,17 +39,23 @@ function Block({ block }: { block: ContentBlock }) {
     case "image":
       return (
         <figure className="mt-6 first:mt-0">
-          <div
-            className="relative w-full overflow-hidden bg-black"
-            style={{ aspectRatio: block.aspectRatio ?? "3 / 2" }}
-          >
-            <Image
-              src={`${BASE_PATH}${block.src}`}
-              alt={block.alt}
-              fill
-              sizes="(min-width: 1024px) 1024px, 100vw"
-              className="object-cover"
-            />
+          {/* A cream mount + slight tilt + resting shadow, like a loose
+              print rather than a flush digital image — restrained on
+              purpose (see the code comment history for why a literal
+              jagged torn-edge cutout was scoped down to this instead). */}
+          <div className="-rotate-[0.6deg] border-[10px] border-foreground bg-foreground shadow-[0_10px_24px_-8px_rgba(0,0,0,0.6)]">
+            <div
+              className="relative w-full overflow-hidden bg-background"
+              style={{ aspectRatio: block.aspectRatio ?? "3 / 2" }}
+            >
+              <Image
+                src={`${BASE_PATH}${block.src}`}
+                alt={block.alt}
+                fill
+                sizes="(min-width: 1024px) 1024px, 100vw"
+                className="object-cover"
+              />
+            </div>
           </div>
           {block.caption && (
             <figcaption className="mt-2 text-xs tracking-[0.1em] text-muted/70 uppercase">
@@ -65,16 +71,22 @@ function Block({ block }: { block: ContentBlock }) {
         <div
           className={`mt-6 grid gap-4 first:mt-0 ${columns === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}
         >
-          {block.images.map((img) => (
+          {block.images.map((img, i) => (
             <figure key={img.src}>
-              <div className="relative aspect-square w-full overflow-hidden bg-black">
-                <Image
-                  src={`${BASE_PATH}${img.src}`}
-                  alt={img.alt}
-                  fill
-                  sizes="(min-width: 1024px) 512px, 100vw"
-                  className="object-cover"
-                />
+              {/* Alternating tilt direction per image — a stack of prints
+                  scattered by hand, not a grid of identically-angled ones. */}
+              <div
+                className={`${i % 2 === 0 ? "-rotate-[0.6deg]" : "rotate-[0.6deg]"} border-[10px] border-foreground bg-foreground shadow-[0_10px_24px_-8px_rgba(0,0,0,0.6)]`}
+              >
+                <div className="relative aspect-square w-full overflow-hidden bg-background">
+                  <Image
+                    src={`${BASE_PATH}${img.src}`}
+                    alt={img.alt}
+                    fill
+                    sizes="(min-width: 1024px) 512px, 100vw"
+                    className="object-cover"
+                  />
+                </div>
               </div>
               {img.caption && (
                 <figcaption className="mt-2 text-xs tracking-[0.1em] text-muted/70 uppercase">

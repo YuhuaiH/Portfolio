@@ -1,16 +1,18 @@
 @import "tailwindcss";
 
-:root {
-  --background: #000000;
-  --foreground: #ffffff;
-  --muted: #9a9a9a;
-}
-
+/* The actual --background/--foreground/--muted/--accent/--accent-bright
+   values are injected into :root by layout.tsx, generated from
+   src/data/theme.json — that's the one file to edit to re-theme the site.
+   This block only maps those custom properties onto Tailwind's color
+   tokens (bg-background, text-accent-bright, etc.); it doesn't assign
+   them, so it doesn't need to change when the palette does. */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
-  --font-heading: var(--font-playfair);
+  --color-accent: var(--accent);
+  --color-accent-bright: var(--accent-bright);
+  --font-heading: var(--font-cormorant);
   --font-sans: var(--font-cardo);
 }
 
@@ -18,4 +20,237 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-cardo), Georgia, serif;
+  position: relative;
+}
+
+/* A faint, restless film-grain overlay across every page, so surfaces read
+   as old photographic stock rather than a flat digital gradient. Oversized
+   (200%) and nudged around on a loop so the grain itself flickers frame to
+   frame instead of sitting still as a visibly-tiled pattern; kept purely
+   achromatic (feColorMatrix saturate=0) so it adds texture without tinting
+   the red/black palette underneath. Fixed + pointer-events:none + a high
+   z-index so it sits above every page's content (including the 3D canvases)
+   without ever intercepting clicks. */
+body::before {
+  content: "";
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  z-index: 999;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  animation: grain 1s steps(4) infinite;
+}
+
+@keyframes grain {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-2%, 3%);
+  }
+  50% {
+    transform: translate(2%, -3%);
+  }
+  75% {
+    transform: translate(-3%, -2%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before {
+    animation: none;
+  }
+}
+
+/* A soft vignette darkening the viewport's edges/corners, the way an old
+   lens (or a print with too little light reaching its margins) would —
+   transparent through the middle where content actually sits, so it never
+   competes with anything for contrast. Fixed like the grain above, but on
+   ::after/a lower z-index so the grain's texture still sits on top of it. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 998;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+/* A warm light-leak wash bleeding in from one corner, the way stray light
+   through a worn seal (or scanning a slightly light-struck frame) blows
+   out one edge of a shot. Its own fixed layer rather than folded into the
+   vignette above: the two are conceptually different marks (one lens-like
+   and symmetric, one a one-off flaw from a specific corner) and easier to
+   tune independently as separate rules. Static, not tied to the grain's
+   per-frame flicker — a light leak is a steady bloom, not noise. The color
+   is the site's accent-bright (src/data/theme.json) hand-converted to an
+   rgb() triplet, same limitation as the one noted in EyeHero.tsx: a plain
+   CSS file can't import the JSON, so this needs a manual touch-up if the
+   palette's accent color changes. */
+.light-leak {
+  position: fixed;
+  inset: 0;
+  z-index: 997;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 55% 45% at 90% 6%,
+    rgba(219, 168, 63, 0.22) 0%,
+    rgba(219, 168, 63, 0) 60%
+  );
+}
+
+/* Faint scratch marks, the way a well-loved reel picks up fine vertical
+   scoring running through a projector gate — built like the page grain
+   (feTurbulence), but with baseFrequency stretched almost flat on one axis
+   so the noise reads as long thin streaks instead of specks, then rotated
+   off-vertical so it doesn't look like a perfectly regular ruled pattern.
+   screen blend mode: the source noise is high-contrast black-on-white, and
+   screen only ever lightens, so it's the black majority of that noise that
+   ends up invisible and the rare bright streaks that show — exactly
+   backwards from how the grain above uses overlay (which shows both
+   directions), because scratches should read as light passing through
+   emulsion damage, not as texture sitting on top of the image. */
+.scratches {
+  position: fixed;
+  top: -10%;
+  left: -10%;
+  width: 120%;
+  height: 120%;
+  z-index: 996;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: screen;
+  transform: rotate(-3deg);
+  background-repeat: repeat;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.002 0.3' numOctaves='2' stitchTiles='stitch' result='t'/%3E%3CfeColorMatrix in='t' type='saturate' values='0' result='g'/%3E%3CfeComponentTransfer in='g'%3E%3CfeFuncR type='linear' slope='6' intercept='-3'/%3E%3CfeFuncG type='linear' slope='6' intercept='-3'/%3E%3CfeFuncB type='linear' slope='6' intercept='-3'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23s)'/%3E%3C/svg%3E");
+}
+
+/* Slow-drifting fog banks — soft, wide, low-contrast blobs rather than any
+   sharp shape, the way smoke pools and rolls rather than sitting still.
+   Three overlapping ellipses at different positions/sizes so it reads as
+   an uneven bank instead of one obviously-radial blob; screen blend mode
+   so it only ever lightens (like haze catching light), never flattens the
+   dark background underneath it. Color is the site's foreground (warm
+   parchment) hand-converted to rgb() — CSS can't import theme.json, same
+   limitation as .light-leak above. A long (55s), gentle drift/scale keeps
+   it reading as slow atmosphere rather than an obvious loop; kept below
+   the grain/vignette/light-leak/scratches so those finer marks still read
+   on top of it rather than getting fogged over themselves. */
+.fog {
+  position: fixed;
+  top: -20%;
+  left: -20%;
+  width: 140%;
+  height: 140%;
+  z-index: 995;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background:
+    radial-gradient(ellipse 45% 30% at 18% 78%, rgba(242, 232, 212, 0.1), transparent 70%),
+    radial-gradient(ellipse 38% 28% at 78% 22%, rgba(242, 232, 212, 0.08), transparent 70%),
+    radial-gradient(ellipse 42% 30% at 55% 55%, rgba(242, 232, 212, 0.06), transparent 70%);
+  animation: fog-drift 55s ease-in-out infinite alternate;
+}
+
+@keyframes fog-drift {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-3%, 2%) scale(1.05);
+  }
+  100% {
+    transform: translate(2%, -2%) scale(1.02);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fog {
+    animation: none;
+  }
+}
+
+/* A slow breathing pulse for the eye's ambient glow (EyeHero.tsx) — subtle
+   opacity/scale drift so the halo reads as candlelight flickering rather
+   than a flat static glow, on a long enough cycle that it never competes
+   with the eye's own cursor-tracking motion for attention. */
+@keyframes eye-glow {
+  0%,
+  100% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+.animate-eye-glow {
+  animation: eye-glow 5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-eye-glow {
+    animation: none;
+  }
+}
+
+/* The greeting text orbiting the About page portrait (AboutHero.tsx) — a
+   plain constant-speed rotation of the whole SVG (text included) rather
+   than animating textPath's startOffset: rotating the entire circle,
+   letters and all, is what makes each letter stay tangent to the circle
+   as it travels (the way text sitting on a spinning record label would),
+   and it's a plain CSS transform rather than needing SMIL. linear, not
+   ease — a marquee should move at a constant speed, not breathe. */
+.animate-orbit-spin {
+  animation: orbit-spin 32s linear infinite;
+}
+
+@keyframes orbit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-orbit-spin {
+    animation: none;
+  }
+}
+
+/* The logo's own grain (see SiteHeader.tsx) is mask-clipped to the
+   letterforms and exactly the size of the logo itself — unlike the
+   page-wide grain above, it can't be nudged via `transform` without
+   dragging the mask out of alignment with the shape it's clipped to.
+   Animating `background-position` instead moves only the noise texture
+   inside that fixed mask, so the speckle flickers across the letters
+   without the silhouette ever drifting off them. */
+@keyframes logo-grain-shift {
+  0%,
+  100% {
+    background-position: 0 0;
+  }
+  25% {
+    background-position: 18px -13px;
+  }
+  50% {
+    background-position: -14px 16px;
+  }
+  75% {
+    background-position: 22px 9px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-grain {
+    animation: none !important;
+  }
 }

@@ -47,11 +47,11 @@ export default function SceneHeader({
           <>
             <button
               onClick={() => setFocusedIndex(null)}
-              className="mb-2 text-xs tracking-[0.15em] text-muted uppercase hover:text-foreground"
+              className="mb-2 text-xs tracking-[0.15em] text-muted uppercase hover:text-accent-bright"
             >
               ← All rolls
             </button>
-            <h2 className="font-heading text-lg tracking-wide">{focused.name}</h2>
+            <h2 className="font-heading text-lg tracking-wide italic">{focused.name}</h2>
             <p className="text-[11px] tracking-[0.15em] text-muted/70 uppercase">
               {formatDate(focused.time)}
             </p>
@@ -62,14 +62,14 @@ export default function SceneHeader({
           </>
         ) : active === "film" ? (
           <>
-            <h2 className="font-heading text-lg tracking-wide">Film</h2>
+            <h2 className="font-heading text-lg tracking-wide italic">Film</h2>
             <p className="text-xs tracking-[0.15em] text-muted uppercase">
               {filmRolls.length} roll{filmRolls.length === 1 ? "" : "s"} · click a roll to explore
             </p>
           </>
         ) : (
           <>
-            <h2 className="font-heading text-lg tracking-wide">Digital</h2>
+            <h2 className="font-heading text-lg tracking-wide italic">Digital</h2>
             <p className="text-xs tracking-[0.15em] text-muted uppercase">
               {digitalCount} photo{digitalCount === 1 ? "" : "s"} · click the billboard for
               details
@@ -77,9 +77,9 @@ export default function SceneHeader({
           </>
         )}
       </div>
-      <div className="pointer-events-auto relative flex items-center rounded-full border border-white/20 bg-black/50 p-1 text-xs tracking-[0.2em] uppercase backdrop-blur-sm">
+      <div className="pointer-events-auto relative flex items-center rounded-full border border-accent-bright/20 bg-background/50 p-1 text-xs tracking-[0.2em] uppercase backdrop-blur-sm">
         <div
-          className="absolute inset-y-1 left-1 rounded-full bg-white/15 transition-transform duration-300 ease-out"
+          className="absolute inset-y-1 left-1 rounded-full bg-accent-bright/30 transition-transform duration-300 ease-out"
           style={{ width: TAB_WIDTH, transform: `translateX(${activeIndex * TAB_WIDTH}px)` }}
         />
         {TABS.map((tab) => (
@@ -88,7 +88,7 @@ export default function SceneHeader({
             href={tab.href}
             style={{ width: TAB_WIDTH }}
             className={`relative z-10 py-1.5 text-center transition-colors ${
-              tab.key === active ? "text-foreground" : "text-muted hover:text-foreground"
+              tab.key === active ? "text-foreground" : "text-muted hover:text-accent-bright"
             }`}
           >
             {tab.label}

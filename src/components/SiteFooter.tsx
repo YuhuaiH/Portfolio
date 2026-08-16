@@ -10,7 +10,7 @@ export default function SiteFooter() {
             href={link.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="hover:text-foreground"
+            className="hover:text-accent-bright"
           >
             {link.label}
           </a>

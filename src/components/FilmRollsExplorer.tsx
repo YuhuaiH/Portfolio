@@ -8,7 +8,7 @@ import { useFilmFocus } from "./FilmFocusProvider";
 
 const FilmScene = dynamic(() => import("./FilmScene"), {
   ssr: false,
-  loading: () => <div className="mt-6 h-[420px] w-full animate-pulse bg-white/5 sm:mt-8 sm:h-[480px]" />,
+  loading: () => <div className="mt-6 h-[420px] w-full animate-pulse bg-foreground/5 sm:mt-8 sm:h-[480px]" />,
 });
 
 export default function FilmRollsExplorer({ filmRolls }: { filmRolls: FilmRoll[] }) {
@@ -30,7 +30,7 @@ export default function FilmRollsExplorer({ filmRolls }: { filmRolls: FilmRoll[]
       {/* The heading + film/digital switcher live in SceneHeader (rendered
           once in layout.tsx) rather than here — see FilmFocusProvider for
           how this component's focused roll reaches that persistent header. */}
-      <div className="mt-6 h-[420px] w-full touch-none cursor-grab bg-[radial-gradient(ellipse_at_center,_rgba(255,255,255,0.07)_0%,_rgba(255,255,255,0)_65%)] active:cursor-grabbing sm:mt-8 sm:h-[480px]">
+      <div className="mt-6 h-[420px] w-full touch-none cursor-grab bg-[radial-gradient(ellipse_at_center,_rgba(219,168,63,0.1)_0%,_rgba(219,168,63,0)_65%)] active:cursor-grabbing sm:mt-8 sm:h-[480px]">
         <FilmScene
           filmRolls={filmRolls}
           focusedIndex={focusedIndex}

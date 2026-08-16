@@ -322,7 +322,7 @@ function buildWrapGeometry(radius: number, startAngle: number, endAngle: number,
 // does, so callers must confirm the font is actually ready (via
 // document.fonts.load) before the first paint, or it silently falls back to
 // the Georgia stack below.
-const LABEL_NAME_FONT = '"Playfair Display", Georgia, serif';
+const LABEL_NAME_FONT = '"Cormorant Garamond", Georgia, serif';
 const LABEL_SPINE_FONT = '"Helvetica Neue", Arial, sans-serif';
 
 // Cylindrical paper-label wrap for the canister body — the roll's name and
@@ -518,14 +518,14 @@ function Canister({
       </mesh>
       <Html position={[0, topSurfaceY + 0.2, 0]} center style={{ pointerEvents: "none" }}>
         <div
-          className={`flex flex-col items-center whitespace-nowrap rounded-2xl border border-white/25 bg-black/60 px-3 py-1.5 text-center backdrop-blur-sm transition-opacity duration-300 ${
+          className={`flex flex-col items-center whitespace-nowrap rounded-2xl border border-accent-bright/25 bg-background/60 px-3 py-1.5 text-center backdrop-blur-sm transition-opacity duration-300 ${
             showLabel ? "opacity-100" : "opacity-0"
           }`}
         >
-          <span className="font-heading text-[11px] uppercase tracking-[0.15em] text-white/90">
+          <span className="font-heading text-[11px] uppercase tracking-[0.15em] text-foreground/90">
             {name}
           </span>
-          <span className="text-[9px] uppercase tracking-[0.15em] text-white/50">
+          <span className="text-[9px] uppercase tracking-[0.15em] text-muted">
             {formatRollDate(time)}
           </span>
         </div>

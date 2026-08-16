@@ -30,7 +30,7 @@ export default function SiteNav() {
           Work and About both replace it entirely rather than sitting
           alongside it — so this is the one explicit way back, wherever
           you've navigated to. */}
-      <Link href="/" className="inline-block py-1 hover:text-foreground">
+      <Link href="/" className="inline-block py-1 hover:text-accent-bright">
         ← Home
       </Link>
       <span className="mx-3 text-muted">/</span>
@@ -41,7 +41,7 @@ export default function SiteNav() {
             {i > 0 && <span className="mx-3 text-muted">/</span>}
             <Link
               href={link.href}
-              className={`group relative inline-block py-1 hover:text-foreground ${
+              className={`group relative inline-block py-1 hover:text-accent-bright ${
                 isActive ? "text-foreground" : ""
               }`}
             >

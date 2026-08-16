@@ -61,13 +61,13 @@ export default function PhotoInfoModal({
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-6 backdrop-blur-sm transition-opacity duration-200 ease-out ${
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-background/80 px-6 backdrop-blur-sm transition-opacity duration-200 ease-out ${
         visible ? "opacity-100" : "opacity-0"
       }`}
       onClick={handleClose}
     >
       <div
-        className={`w-full border border-white/15 bg-black p-6 text-center transition-all duration-200 ease-out ${
+        className={`w-full border border-foreground/15 bg-background p-6 text-center transition-all duration-200 ease-out ${
           isLandscape ? "max-w-3xl" : "max-w-md"
         } ${visible ? "translate-y-0 scale-100 opacity-100" : "translate-y-2 scale-95 opacity-0"}`}
         onClick={(e) => e.stopPropagation()}
@@ -79,7 +79,7 @@ export default function PhotoInfoModal({
           height={photo.height}
           className={`mx-auto mb-4 h-auto w-auto ${isLandscape ? "max-h-[75vh]" : "max-h-[62vh]"}`}
         />
-        <h3 className="font-heading text-lg tracking-wide">{photo.name}</h3>
+        <h3 className="font-heading text-lg tracking-wide italic">{photo.name}</h3>
         <p className="mt-1 text-xs tracking-[0.15em] text-muted uppercase">
           {date} · {photo.type === "film" ? photo.filmRoll : "Digital"}
         </p>
@@ -90,13 +90,13 @@ export default function PhotoInfoModal({
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="text-xs tracking-[0.15em] text-muted uppercase hover:text-foreground"
+            className="text-xs tracking-[0.15em] text-muted uppercase hover:text-accent-bright"
           >
             Full resolution
           </a>
           <button
             onClick={handleClose}
-            className="text-xs tracking-[0.15em] text-muted uppercase hover:text-foreground"
+            className="text-xs tracking-[0.15em] text-muted uppercase hover:text-accent-bright"
           >
             Close
           </button>
