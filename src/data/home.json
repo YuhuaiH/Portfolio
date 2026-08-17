@@ -1,7 +1,7 @@
 {
   "boxes": [
     { "heading": "Work", "href": "/work", "text": "Film & digital photography" },
-    { "heading": "About", "href": "/about", "text": "The person behind the lens" },
+    { "heading": "About", "href": "/about", "text": "Who is Yuhuai?" },
     { "heading": "Contact", "text": "[{{email}}](mailto:{{email}})" },
     {
       "heading": "Elsewhere",

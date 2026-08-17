@@ -220,8 +220,17 @@ body::after {
   }
 }
 
+/* The portrait photo itself, spinning the opposite way from the orbit
+   text around it — same keyframe and duration as .animate-orbit-spin,
+   just `reverse`d, so the two read as one deliberate counter-rotating
+   pair (like two gears) rather than one arbitrary extra animation. */
+.animate-photo-spin {
+  animation: orbit-spin 32s linear infinite reverse;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-orbit-spin {
+  .animate-orbit-spin,
+  .animate-photo-spin {
     animation: none;
   }
 }

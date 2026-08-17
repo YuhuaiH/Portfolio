@@ -38,20 +38,24 @@ const ORBIT_TEXT = `${GREETING}   •   ${GREETING}   •   `;
 
 // The circular path text rides along — a "circle" in SVG path syntax is
 // two semicircle arcs back to the start, not a single primitive. Radius
-// (135) is sized to sit just outside the photo's own edge (see the
-// h-[62%] circle below) within a 320×320 viewBox, leaving enough margin
-// past the path itself for the text's ascenders/descenders not to clip
-// against the SVG's own edge.
+// (150, up from an original 135) needed to grow independently of the
+// viewBox's overall size: the doubled greeting turned out to be slightly
+// longer than a r=135 circle's circumference (≈848 user units), which is
+// what was causing the two copies to visibly overlap at the seam — a
+// bigger circle (≈942 units) gives the same text more room to lay out
+// without either shrinking the text or cutting a repeat. viewBox grew
+// alongside it (320→340) to keep the same margin past the path for
+// ascenders/descenders that a bigger radius would otherwise eat into.
 function OrbitText() {
   return (
     <svg
-      viewBox="0 0 320 320"
+      viewBox="0 0 340 340"
       aria-hidden
       className="animate-orbit-spin pointer-events-none absolute inset-0 h-full w-full"
       style={{ transformOrigin: "50% 50%" }}
     >
       <defs>
-        <path id="orbit-path" d="M160,160 m-135,0 a135,135 0 1,1 270,0 a135,135 0 1,1 -270,0" />
+        <path id="orbit-path" d="M170,170 m-150,0 a150,150 0 1,1 300,0 a150,150 0 1,1 -300,0" />
       </defs>
       <text className="fill-accent-bright/75 text-[10px] tracking-[0.1em]">
         <textPath href="#orbit-path" xlinkHref="#orbit-path" startOffset="0%">
@@ -85,9 +89,9 @@ export default function AboutHero() {
   }, []);
 
   return (
-    <div className="relative mx-auto mt-6 flex max-w-sm flex-col items-center gap-6 sm:mt-8 sm:h-[420px] sm:max-w-3xl">
+    <div className="relative mx-auto mt-6 flex max-w-sm flex-col items-center gap-6 sm:mt-8 sm:h-[520px] sm:max-w-3xl">
       <div
-        className={`relative h-72 w-72 shrink-0 transition-opacity duration-700 ease-out sm:absolute sm:top-1/2 sm:left-1/2 sm:h-80 sm:w-80 sm:-translate-x-1/2 sm:-translate-y-1/2 ${
+        className={`relative h-80 w-80 shrink-0 transition-opacity duration-700 ease-out sm:absolute sm:top-1/2 sm:left-1/2 sm:h-[26rem] sm:w-[26rem] sm:-translate-x-1/2 sm:-translate-y-1/2 ${
           entered ? "opacity-100" : "opacity-0"
         }`}
       >
@@ -102,13 +106,37 @@ export default function AboutHero() {
           }}
         />
         <OrbitText />
-        <div className="absolute top-1/2 left-1/2 h-[62%] w-[62%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full border-4 border-accent-bright/40 shadow-[0_0_40px_-10px_rgba(219,168,63,0.5)]">
-          <Image
-            src={`${BASE_PATH}/about/profile.jpg`}
-            alt="Portrait"
-            fill
-            sizes="(min-width: 640px) 320px, 288px"
-            className="object-cover"
+        {/* Border ring and photo crop split into two stacked layers rather
+            than one div carrying border + overflow-hidden + shadow
+            together — keeps the ring a crisp, unclipped circle regardless
+            of what the photo underneath is doing, instead of the ring
+            being part of the same box whose content is being clipped. */}
+        <div className="absolute top-1/2 left-1/2 h-[62%] w-[62%] -translate-x-1/2 -translate-y-1/2 rounded-full">
+          {/* The spin lives on this wrapper, not the Image itself — the
+              Image already carries its own static -rotate-90 orientation
+              fix, and a running CSS animation's keyframe transform fully
+              replaces an element's static transform rather than adding to
+              it (same issue as CollageBackground.tsx's drift). Putting the
+              two rotations on separate elements sidesteps that entirely:
+              the wrapper spins, the Image inside it stays corrected. */}
+          <div
+            className="animate-photo-spin absolute inset-0 overflow-hidden rounded-full"
+            style={{ transformOrigin: "50% 50%" }}
+          >
+            <Image
+              src={`${BASE_PATH}/about/profile.jpg`}
+              alt="Portrait"
+              fill
+              sizes="(min-width: 640px) 416px, 320px"
+              // The source file's raw pixels are landscape-oriented (a
+              // portrait shot without EXIF orientation applied) — rotated
+              // back upright here rather than re-exporting the file.
+              className="-rotate-90 object-cover"
+            />
+          </div>
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 rounded-full border-4 border-accent-bright/40 shadow-[0_0_40px_-10px_rgba(219,168,63,0.5)]"
           />
         </div>
       </div>

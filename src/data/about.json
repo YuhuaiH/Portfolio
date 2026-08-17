@@ -1,8 +1,11 @@
 [
   { "type": "heading", "text": "About", "level": 1 },
-  { "type": "paragraph", "text": "This guy is too lazy to write his bio." },
+  { 
+    "type": "paragraph", 
+    "text": "Yuhuai is a lazy guy. He's a bit socially awkard, and enjoys doing weird stuff. \n Find him for doing photography, design, composing, and coding." 
+  },
   {
     "type": "paragraph",
-    "text": "For bookings and inquiries, reach out at [{{email}}](mailto:{{email}})."
+    "text": "For bookings and inquiries, reach out at [{{email}}](mailto:{{email}}) or @yuhuaih on Instagram."
   }
 ]
