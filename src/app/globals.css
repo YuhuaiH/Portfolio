@@ -177,6 +177,36 @@ body::after {
   }
 }
 
+/* A slow scale/pan "breathing" for the static backdrop photo in
+   CollageBackground.tsx — a long (90s) cycle, deliberately much slower
+   than the clouds drifting in front of it (their own warp cycles at 40s)
+   so the backdrop reads as quietly alive rather than competing with them
+   for attention. This is on top of that same image also carrying the
+   clouds' continuous warp filter — the scale/pan here is a second, purely
+   CSS-transform layer of motion, needed because a filter-driven warp alone
+   doesn't shift the image's framing the way a slow zoom/pan does. */
+.bg-drift {
+  animation: bg-drift 90s ease-in-out infinite alternate;
+}
+
+@keyframes bg-drift {
+  0% {
+    transform: scale(1) translate(0, 0);
+  }
+  50% {
+    transform: scale(1.08) translate(-1.5%, 1%);
+  }
+  100% {
+    transform: scale(1.04) translate(1%, -1.5%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bg-drift {
+    animation: none;
+  }
+}
+
 /* A slow breathing pulse for the eye's ambient glow (EyeHero.tsx) — subtle
    opacity/scale drift so the halo reads as candlelight flickering rather
    than a flat static glow, on a long enough cycle that it never competes

@@ -333,56 +333,81 @@ const LABEL_SPINE_FONT = '"Helvetica Neue", Arial, sans-serif';
 function paintLabelWrap(ctx: CanvasRenderingContext2D, w: number, h: number, name: string) {
   ctx.clearRect(0, 0, w, h);
 
-  // Symmetric band layout — a color band at each edge flanking a cream
-  // field in the middle, all running the full height, with the text
-  // rotated to read up the can rather than around it. Since the texture
-  // repeats twice around the circumference (see repeat.set(2, 1) below),
-  // this pair of edge bands actually reads as two color bands alternating
-  // with two cream fields all the way around the can, rather than a single
-  // stripe — more color, and the name sits in the true middle of each
-  // repeat instead of being pushed off toward one edge.
-  const bandW = w * 0.32;
-  const fieldX0 = bandW;
-  const fieldX1 = w - bandW;
+  // Classic film-box layout — a solid orange field with a black band along
+  // the top and bottom (the H axis here is the can's physical height, W is
+  // the circumference; see the coordinate note on LABEL_SPINE_FONT's text
+  // below), rather than the previous cream field with color bands at the
+  // circumferential edges. Matches a real 35mm canister label's actual
+  // color logic — bold black-on-orange for the name, a thin spine line in
+  // the band — instead of the earlier two-tone edge-stripe design.
+  const bandH = h * 0.06;
+  // Vertical black strips at each edge (bandW, running the full height) —
+  // brought back from the very first version of this label, which had
+  // color bands running vertically at the circumferential edges rather
+  // than horizontal ones. Combined with bandH above, the two now frame the
+  // orange field on all four sides instead of just top/bottom.
+  const bandW = w * 0.06;
 
-  ctx.fillStyle = "#efe8d8";
+  ctx.fillStyle = "#e8791a";
   ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = "#2a5599";
+  ctx.fillStyle = "#17130f";
+  ctx.fillRect(0, 0, w, bandH);
+  ctx.fillRect(0, h - bandH, w, bandH);
   ctx.fillRect(0, 0, bandW, h);
-  ctx.fillStyle = "#008250";
-  ctx.fillRect(fieldX1, 0, bandW, h);
+  ctx.fillRect(w - bandW, 0, bandW, h);
 
-  // Thin gold pinstripe accents at each band/field seam.
-  ctx.fillStyle = "#f0c56b";
-  ctx.fillRect(fieldX0 - 4, 0, 4, h);
-  ctx.fillRect(fieldX1, 0, 4, h);
+  // Thin cream pinstripe at each band/field seam.
+  ctx.fillStyle = "#f5ede0";
+  ctx.fillRect(0, bandH - 3, w, 3);
+  ctx.fillRect(0, h - bandH, w, 3);
+  ctx.fillRect(bandW - 3, 0, 3, h);
+  ctx.fillRect(w - bandW, 0, 3, h);
 
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
-  // "35mm FILM", rotated upright in the left band.
-  ctx.save();
-  ctx.translate(bandW / 2, h / 2);
-  ctx.rotate(-Math.PI / 2);
-  ctx.font = `bold 30px ${LABEL_SPINE_FONT}`;
-  ctx.fillStyle = "#f5ede0";
-  ctx.fillText("35mm FILM", 0, 0);
-  ctx.restore();
+  // "35mm FILM", repeated across the bottom band at its natural
+  // orientation (not rotated, unlike the name below) — this is the one
+  // piece of text meant to read *around* the can as you spin it, the way
+  // a real canister's small print does, rather than up it. Repeated at a
+  // fixed spacing rather than drawn once so it reads continuously as the
+  // band wraps around instead of appearing only once per lap.
+  ctx.font = `bold 20px ${LABEL_SPINE_FONT}`;
+  ctx.fillStyle = "#d8c9a3";
+  ctx.lineWidth = 0.8;
+  ctx.strokeStyle = "#d8c9a3";
+  const spineY = h - bandH / 2;
+  const spineSpacing = w / 3;
+  for (let x = spineSpacing / 2; x < w; x += spineSpacing) {
+    ctx.fillText("35mm FILM", x, spineY);
+    ctx.strokeText("35mm FILM", x, spineY);
+  }
 
   // Roll name, rotated upright, centered on the full texture width and
-  // filling most of the field's height.
+  // filling most of the remaining (non-band) field height. Stroked on top
+  // of the fill, not just filled — Cormorant Garamond's actual bold weight
+  // (700, the heaviest one loaded; see layout.tsx) is still a fairly
+  // refined serif by design, so "bold" alone reads more elegant than
+  // heavy. Outlining the glyphs in the same dark color thickens their
+  // strokes for real, rather than switching to a different, heavier
+  // typeface that would break the "matches the site's own heading font"
+  // identity the comment above LABEL_NAME_FONT calls out.
   ctx.save();
   ctx.translate(w / 2, h / 2);
   ctx.rotate(-Math.PI / 2);
   let nameSize = 96;
   const upperName = name.toUpperCase();
   ctx.font = `bold ${nameSize}px ${LABEL_NAME_FONT}`;
-  while (ctx.measureText(upperName).width > h * 0.9 && nameSize > 34) {
+  while (ctx.measureText(upperName).width > (h - bandH * 2) * 0.9 && nameSize > 34) {
     nameSize -= 2;
     ctx.font = `bold ${nameSize}px ${LABEL_NAME_FONT}`;
   }
   ctx.fillStyle = "#1c1712";
+  ctx.strokeStyle = "#1c1712";
+  ctx.lineWidth = nameSize * 0.045;
+  ctx.lineJoin = "round";
   ctx.fillText(upperName, 0, 0);
+  ctx.strokeText(upperName, 0, 0);
   ctx.restore();
 }
 
@@ -462,7 +487,7 @@ function Canister({
   // labeled. The body is centered on y=0 so its middle — where the film
   // actually runs — lines up with the strip beside it, regardless of the
   // (slightly unequal) spool extensions above and below.
-  const bodyLabelFraction = 0.78;
+  const bodyLabelFraction = 0.94;
   const bodyLabelH = CAN_BODY_H * bodyLabelFraction;
   const bodyCapH = CAN_BODY_H - bodyLabelH;
   const bottom = -(CAN_BOTTOM_SPOOL_H + CAN_BODY_H / 2);
