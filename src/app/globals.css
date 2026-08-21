@@ -154,7 +154,7 @@ body::after {
   mix-blend-mode: screen;
   background:
     radial-gradient(ellipse 45% 30% at 18% 78%, rgba(242, 232, 212, 0.1), transparent 70%),
-    radial-gradient(ellipse 38% 28% at 78% 22%, rgba(242, 232, 212, 0.08), transparent 70%),
+    radial-gradient(ellipse 38% 28% at 68% 48%, rgba(242, 232, 212, 0.08), transparent 70%),
     radial-gradient(ellipse 42% 30% at 55% 55%, rgba(242, 232, 212, 0.06), transparent 70%);
   animation: fog-drift 55s ease-in-out infinite alternate;
 }
@@ -177,27 +177,34 @@ body::after {
   }
 }
 
-/* A slow scale/pan "breathing" for the static backdrop photo in
-   CollageBackground.tsx — a long (90s) cycle, deliberately much slower
-   than the clouds drifting in front of it (their own warp cycles at 40s)
-   so the backdrop reads as quietly alive rather than competing with them
-   for attention. This is on top of that same image also carrying the
-   clouds' continuous warp filter — the scale/pan here is a second, purely
-   CSS-transform layer of motion, needed because a filter-driven warp alone
-   doesn't shift the image's framing the way a slow zoom/pan does. */
+/* A slow, continuous *rotation* for the static backdrop photo in
+   CollageBackground.tsx — deliberately much slower (180s per full turn)
+   than the clouds' own warp cycle (40s) so the backdrop reads as quietly
+   alive rather than competing with them for attention. This used to be a
+   translate-based pan (scale + shift left/right/up/down), which read as
+   the image flowing sideways; rotating around a fixed center instead
+   reads as spinning, per the actual ask. linear + one direction, not
+   ease-in-out + alternate — a spin should hold constant speed and never
+   reverse, unlike the back-and-forth "breathing" the old pan had. scale
+   is a constant 1.8 throughout (not animated) rather than a range: a
+   rotating image needs real overscan to keep covering a rectangular
+   viewport at every angle (its corners sweep well outside the frame at
+   e.g. 45°), where the old pan only ever needed enough overscan for a
+   small translate, not a full turn. This is on top of that same image
+   also carrying the clouds' continuous warp filter — the rotation here is
+   a second, purely CSS-transform layer of motion, needed because a
+   filter-driven warp alone doesn't move the image's framing the way an
+   actual transform does. */
 .bg-drift {
-  animation: bg-drift 90s ease-in-out infinite alternate;
+  animation: bg-drift 180s linear infinite;
 }
 
 @keyframes bg-drift {
-  0% {
-    transform: scale(1) translate(0, 0);
+  from {
+    transform: scale(2.4) rotate(0deg);
   }
-  50% {
-    transform: scale(1.08) translate(-1.5%, 1%);
-  }
-  100% {
-    transform: scale(1.04) translate(1%, -1.5%);
+  to {
+    transform: scale(2.4) rotate(360deg);
   }
 }
 

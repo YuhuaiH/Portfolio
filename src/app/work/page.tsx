@@ -12,7 +12,11 @@ export default function WorkPage() {
   const filmRolls = getFilmRolls(photos);
 
   return (
-    <div className="pb-16">
+    // pb-8, not pb-16 — combined with the film canvas's own now-shorter
+    // height and margin (see FilmRollsExplorer.tsx), this is what actually
+    // brings the page's total height down to fit in one viewport like the
+    // home page does, instead of needing a scroll to reach the footer.
+    <div className="pb-8">
       {filmRolls.length > 0 ? (
         <FilmRollsExplorer filmRolls={filmRolls} />
       ) : (

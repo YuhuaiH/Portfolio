@@ -915,10 +915,25 @@ function SceneController({
       const rightEdge = last.baseX + last.minPulled;
       const targetX = (leftEdge + rightEdge) / 2;
       const camZ = camZForHalfWidth((rightEdge - leftEdge) / 2 + 1.1, 4.5);
+      // The lookAt's Y is what actually decides where the roll sits within
+      // the frame — whatever world-Y it points at lands at screen-center,
+      // so everything above that Y renders in the upper half of the canvas
+      // and everything below it renders in the lower half, regardless of
+      // camera position or tilt. The canisters span roughly -0.63 to 0.66,
+      // so at the previous 0.35 the frame's center point sat close to their
+      // *top* — meaning most of the canister (and all the empty space below
+      // it) rendered in the lower half, but so did most of the visible
+      // frame below that point, leaving a large empty gap under the roll
+      // before the fixed-height canvas box ran out. Pushing this to 0.6 —
+      // well above the canisters' own vertical center (~0.02) — moves the
+      // whole visible window up in world space, which moves the roll row
+      // down within the fixed-size box: more room above it (where it was
+      // sitting almost flush against the tab pill), less below (where it
+      // was floating in dead space before the footer).
       camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetX, CAMERA_OVERVIEW_LERP);
-      camera.position.y = THREE.MathUtils.lerp(camera.position.y, 1.5, CAMERA_OVERVIEW_LERP);
+      camera.position.y = THREE.MathUtils.lerp(camera.position.y, 1.15, CAMERA_OVERVIEW_LERP);
       camera.position.z = THREE.MathUtils.lerp(camera.position.z, camZ, CAMERA_OVERVIEW_LERP);
-      camera.lookAt(targetX, 0.2, 0);
+      camera.lookAt(targetX, 0.6, 0);
     } else {
       const rs = rollStates[idx];
       const display = rs.clipPlane.constant - rs.baseX;
@@ -962,7 +977,11 @@ export default function FilmScene({
 
   return (
     <Canvas
-      camera={{ position: [initialWidth / 2, 1.5, 4.5 + initialWidth * 0.32], fov: 45 }}
+      // y matches the overview camera's lerp target below (1.15, lowered
+      // from 1.5) so the very first frame starts where the lerp is already
+      // heading, instead of visibly dropping into place over the first
+      // second or so.
+      camera={{ position: [initialWidth / 2, 1.15, 4.5 + initialWidth * 0.32], fov: 45 }}
       dpr={[1, 2]}
       gl={{ antialias: true, alpha: true }}
       onCreated={({ gl }) => {

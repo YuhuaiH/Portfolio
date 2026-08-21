@@ -8,12 +8,16 @@
 // is addressed.
 export default function DigitalCityExplorer() {
   return (
-    <section className="mb-16">
+    // mb-2 + a shorter box (h-[320px]/[400px], down from 560/680 —
+    // matches FilmRollsExplorer.tsx's own fix) rather than keeping the
+    // disabled scene's full footprint: there's no scene to reserve room
+    // for anymore, and the old height combined with mb-16 stacking on
+    // this page's own pb-16 pushed the page past one viewport, the same
+    // bug fixed on /work.
+    <section className="mb-2">
       {/* The heading + film/digital switcher live in SceneHeader (rendered
-          once in layout.tsx) rather than here. Same footprint as the scene
-          it replaces (h-[560px]/h-[680px]) so the page doesn't jump when
-          this comes back. */}
-      <div className="mt-6 flex h-[560px] w-full items-center justify-center border border-accent-bright/15 bg-background sm:mt-8 sm:h-[680px]">
+          once in layout.tsx) rather than here. */}
+      <div className="mt-6 flex h-[320px] w-full items-center justify-center border border-accent-bright/15 bg-background sm:mt-8 sm:h-[400px]">
         <p className="font-heading text-2xl text-foreground italic sm:text-3xl">Coming Soon</p>
       </div>
     </section>

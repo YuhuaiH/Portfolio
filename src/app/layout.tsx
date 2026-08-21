@@ -6,6 +6,7 @@ import PageTransition from "@/components/PageTransition";
 import SceneHeader from "@/components/SceneHeader";
 import { FilmFocusProvider } from "@/components/FilmFocusProvider";
 import CollageBackground from "@/components/CollageBackground";
+import WoodBackground from "@/components/WoodBackground";
 import { getPhotos, getFilmRolls } from "@/lib/photos";
 import site from "@/data/site.json";
 import { THEME } from "@/lib/theme";
@@ -18,6 +19,25 @@ import "./globals.css";
 // src/lib/theme.ts for the two spots (WebGL colors, one inline glow) that
 // can't just read a CSS var and import theme.json directly instead.
 const THEME_STYLE = `:root{--background:${THEME.background};--foreground:${THEME.foreground};--muted:${THEME.muted};--accent:${THEME.accent};--accent-bright:${THEME.accentBright};}`;
+
+// One on/off switch per decorative background layer, in one place, instead
+// of commenting an import and its JSX in and out every time one gets
+// tried/dropped/brought back — which is what the last several rounds of
+// "get rid of X for now" / "bring Y back" actually were. Flip a value here,
+// nothing else needs touching.
+//
+// grain and vignette aren't in this list: they're plain CSS
+// (body::before/::after in globals.css), not React-rendered like the
+// layers below, so they don't have a prop to gate on the way these do —
+// ask if you want those wired into this same system too.
+const LAYERS = {
+  wood: true, // WoodBackground.tsx — the true backmost layer, static wood grain
+  collage: true, // CollageBackground.tsx — the static forest/stream photo
+  collageClouds: false, // the three drifting wind*.png clouds inside it
+  fog: false,
+  lightLeak: true,
+  scratches: false, // the diagonal streak texture
+};
 
 const cardo = Cardo({
   variable: "--font-cardo",
@@ -64,11 +84,13 @@ export default function RootLayout({
             DOM node per effect rather than cramming more into body's own
             ::before (grain) / ::after (vignette), so each stays independently
             tunable. aria-hidden + pointer-events:none: purely decorative,
-            never part of the page's content or interaction. */}
-        <CollageBackground />
-        <div aria-hidden className="fog" />
-        <div aria-hidden className="light-leak" />
-        <div aria-hidden className="scratches" />
+            never part of the page's content or interaction. Each one's
+            on/off state lives in the LAYERS config above. */}
+        {LAYERS.wood && <WoodBackground />}
+        {LAYERS.collage && <CollageBackground showClouds={LAYERS.collageClouds} />}
+        {LAYERS.fog && <div aria-hidden className="fog" />}
+        {LAYERS.lightLeak && <div aria-hidden className="light-leak" />}
+        {LAYERS.scratches && <div aria-hidden className="scratches" />}
         <SiteHeader />
         <FilmFocusProvider>
           <main className="relative flex-1">

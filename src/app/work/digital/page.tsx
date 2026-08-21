@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 // message, since the scene being off isn't a data problem to report.
 export default function DigitalPage() {
   return (
-    <div className="pb-16">
+    <div className="pb-8">
       <DigitalCityExplorer />
     </div>
   );
