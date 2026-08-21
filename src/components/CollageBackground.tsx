@@ -126,25 +126,21 @@ export default function CollageBackground({ showClouds = false }: { showClouds?:
           back among this component's own children, which — since the whole
           component sits behind the page via -z-10 above — is also furthest
           back overall).
-          maskImage: a rotating rectangle needs a *lot* of overscan to keep
-          covering an arbitrary-aspect-ratio viewport at every angle — the
-          scale that's exactly enough depends on the viewport's own
-          proportions (worse on wide/ultrawide screens), so tuning one fixed
-          scale value is fragile and was still showing the image's actual
-          corner at some angles. Feathering the edges with a radial-gradient
-          mask sidesteps the geometry problem rather than solving it more
-          precisely: the image fades to transparent well before its real
-          boundary could ever be reached, revealing WoodBackground.tsx's
-          wood grain underneath — which also happens to be the haze this
-          was asked for, not just the boundary fix. */}
+          A radial-gradient mask-image used to sit here to feather the
+          rotating rectangle's edges — removed: a live mask-image stacked
+          on top of an already-animated SVG filter is expensive to
+          recomposite every single frame, on the one element in this whole
+          component still doing per-frame recomputation on desktop, and
+          that combined cost was the real "it's slow again." The scale
+          (2.4, generous overscan) plus this opacity (0.35, already faint)
+          make the boundary far less noticeable without it — worth that
+          trade against the extra render cost. */}
       <img
         src={`${BASE_PATH}/resources/background.png`}
         alt=""
         className={`bg-drift absolute inset-0 h-full w-full object-cover opacity-[0.35] ${DISTORT_VAR}`}
         style={{
           filter: `var(--collage-distort) ${BACKGROUND_TINT}`,
-          WebkitMaskImage: "radial-gradient(ellipse 62% 62% at 50% 50%, black 45%, transparent 85%)",
-          maskImage: "radial-gradient(ellipse 62% 62% at 50% 50%, black 45%, transparent 85%)",
           animationDelay: bgDriftDelay,
         }}
       />
