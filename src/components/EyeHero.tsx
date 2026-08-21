@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import EyeStage, { type EyeReaction } from "@/components/EyeStage";
 import { renderInlineText } from "@/lib/content";
+import { useNavigationPending } from "@/components/NavigationPendingProvider";
 
 type Box = { heading: string; text: string; href?: string };
 
@@ -311,6 +312,7 @@ const READY_FALLBACK_MS = 2500;
 // hero just appearing at once.
 export default function EyeHero({ boxes }: { boxes: Box[] }) {
   const router = useRouter();
+  const { startNavigating } = useNavigationPending();
   const [pending, setPending] = useState<{ href: string; dir: readonly [number, number] } | null>(
     null
   );
@@ -347,7 +349,15 @@ export default function EyeHero({ boxes }: { boxes: Box[] }) {
   function handleNavigate(href: string, dir: readonly [number, number]) {
     if (pending) return; // already on the way somewhere — ignore extra clicks
     setPending({ href, dir });
-    setTimeout(() => router.push(href), REACTION_DELAY_MS);
+    // startNavigating() fires here, alongside the actual router.push —
+    // not immediately on click — so the page-wide fade doesn't compete
+    // with the eye's own look-and-dilate reaction for those first 380ms;
+    // the eye gets its moment, then the transition takes over once
+    // navigation is genuinely starting.
+    setTimeout(() => {
+      startNavigating();
+      router.push(href);
+    }, REACTION_DELAY_MS);
   }
 
   const reaction: EyeReaction = pending ? { dir: pending.dir, dilate: true } : null;

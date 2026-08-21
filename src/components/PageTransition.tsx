@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useNavigationPending } from "./NavigationPendingProvider";
 
 const FADE_MS = 200;
 
@@ -11,9 +12,20 @@ const FADE_MS = 200;
 // film/digital scenes) reads as a transition rather than an abrupt cut.
 export default function PageTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { pending } = useNavigationPending();
   const [displayChildren, setDisplayChildren] = useState(children);
   const [visible, setVisible] = useState(true);
   const prevPathnameRef = useRef(pathname);
+
+  // Fades out the instant a navigation is marked pending (see
+  // NavigationPendingProvider) rather than waiting for the pathname
+  // itself to change below — that's what left a dead, unresponsive gap
+  // between a click and the route actually resolving. If the wait is
+  // long, the page just stays faded until the effect below swaps content
+  // in — still better than no feedback at all.
+  useEffect(() => {
+    if (pending) setVisible(false);
+  }, [pending]);
 
   useEffect(() => {
     if (prevPathnameRef.current === pathname) {

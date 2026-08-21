@@ -1,8 +1,12 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import site from "@/data/site.json";
 import SiteNav from "./SiteNav";
 import { THEME, hexToRgba } from "@/lib/theme";
+import { useNavigationPending } from "./NavigationPendingProvider";
 
 // next/image never applies basePath to a hardcoded src when
 // images.unoptimized is on (required for static export) — the
@@ -22,6 +26,9 @@ const GRAIN_TILE =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='70' height='70'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch' result='t'/%3E%3CfeColorMatrix in='t' type='saturate' values='0' result='g'/%3E%3CfeComponentTransfer in='g'%3E%3CfeFuncR type='linear' slope='3' intercept='-1'/%3E%3CfeFuncG type='linear' slope='3' intercept='-1'/%3E%3CfeFuncB type='linear' slope='3' intercept='-1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E";
 
 export default function SiteHeader() {
+  const pathname = usePathname();
+  const { startNavigating } = useNavigationPending();
+
   return (
     <header className="flex flex-col items-center gap-3 px-6 py-5 text-center sm:py-6">
       {/* The glow's `filter` lives on the Image itself now, not this
@@ -37,7 +44,15 @@ export default function SiteHeader() {
           alone rather than image+grain-span together, but the grain is
           mask-clipped to that exact same logo shape, so the visible
           difference is negligible. */}
-      <Link href="/" className="relative inline-block">
+      <Link
+        href="/"
+        className="relative inline-block"
+        // pathname !== "/" guard: same reasoning as SiteNav.tsx/
+        // SceneHeader.tsx — clicking the logo while already on the home
+        // page never fires a pathname change, and would leave `pending`
+        // stuck true forever if this fired anyway.
+        onClick={pathname !== "/" ? startNavigating : undefined}
+      >
         <Image
           src={LOGO_SRC}
           alt={site.name}

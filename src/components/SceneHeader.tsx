@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import type { FilmRoll } from "@/lib/photos";
 import { formatDate } from "./PhotoInfoModal";
 import { useFilmFocus } from "./FilmFocusProvider";
+import { useNavigationPending } from "./NavigationPendingProvider";
 
 const TABS = [
   { href: "/work", label: "Film", key: "film" },
@@ -32,6 +33,7 @@ export default function SceneHeader({
 }) {
   const pathname = usePathname();
   const { focusedIndex, setFocusedIndex } = useFilmFocus();
+  const { startNavigating } = useNavigationPending();
   const active =
     pathname === "/work/digital" ? "digital" : pathname === "/work" ? "film" : null;
 
@@ -87,6 +89,11 @@ export default function SceneHeader({
             key={tab.key}
             href={tab.href}
             style={{ width: TAB_WIDTH }}
+            // Guarded the same way as SiteNav.tsx's links — only mark a
+            // navigation pending for an actual route change, not a click
+            // on the tab already active (which never fires a pathname
+            // change, and would leave `pending` stuck true forever).
+            onClick={tab.key !== active ? startNavigating : undefined}
             className={`relative z-10 py-1.5 text-center transition-colors ${
               tab.key === active ? "text-foreground" : "text-muted hover:text-accent-bright"
             }`}

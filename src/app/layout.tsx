@@ -5,6 +5,7 @@ import SiteFooter from "@/components/SiteFooter";
 import PageTransition from "@/components/PageTransition";
 import SceneHeader from "@/components/SceneHeader";
 import { FilmFocusProvider } from "@/components/FilmFocusProvider";
+import { NavigationPendingProvider } from "@/components/NavigationPendingProvider";
 import CollageBackground from "@/components/CollageBackground";
 import WoodBackground from "@/components/WoodBackground";
 import { getPhotos, getFilmRolls } from "@/lib/photos";
@@ -35,7 +36,7 @@ const LAYERS = {
   collage: true, // CollageBackground.tsx — the static forest/stream photo
   collageClouds: false, // the three drifting wind*.png clouds inside it
   fog: false,
-  lightLeak: true,
+  lightLeak: false,
   scratches: false, // the diagonal streak texture
 };
 
@@ -91,13 +92,18 @@ export default function RootLayout({
         {LAYERS.fog && <div aria-hidden className="fog" />}
         {LAYERS.lightLeak && <div aria-hidden className="light-leak" />}
         {LAYERS.scratches && <div aria-hidden className="scratches" />}
-        <SiteHeader />
-        <FilmFocusProvider>
-          <main className="relative flex-1">
-            <SceneHeader filmRolls={filmRolls} digitalCount={digitalCount} />
-            <PageTransition>{children}</PageTransition>
-          </main>
-        </FilmFocusProvider>
+        {/* Wraps SiteHeader/SceneHeader (the nav triggers) and PageTransition
+            (the consumer) together — see NavigationPendingProvider.tsx for
+            why a Link's onClick alone isn't enough signal on its own. */}
+        <NavigationPendingProvider>
+          <SiteHeader />
+          <FilmFocusProvider>
+            <main className="relative flex-1">
+              <SceneHeader filmRolls={filmRolls} digitalCount={digitalCount} />
+              <PageTransition>{children}</PageTransition>
+            </main>
+          </FilmFocusProvider>
+        </NavigationPendingProvider>
         <SiteFooter />
       </body>
     </html>

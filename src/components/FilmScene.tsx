@@ -104,6 +104,15 @@ const CAMERA_FOCUS_LERP = 0.08;
 // deselect made the pan back feel abrupt — a much gentler ease here spreads
 // that big jump in target position/zoom out instead of lurching toward it.
 const CAMERA_OVERVIEW_LERP = 0.035;
+// lookAt's Y is set to this ratio times the camera's current distance
+// (camZ) rather than a fixed world value, in both the overview and focus
+// branches below — since the screen-space offset of a z=0 object from
+// center scales with targetY/camZ, using the same ratio in both places is
+// what keeps the roll sitting at the same height on screen whether you're
+// looking at the whole row or zoomed into one canister. A fixed absolute Y
+// (the old approach) only looked right at whatever camZ it was tuned
+// against, and drifted between the two very different zoom levels.
+const CAMERA_PITCH_RATIO = 0.16;
 
 type RollState = {
   roll: FilmRoll;
@@ -933,7 +942,7 @@ function SceneController({
       camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetX, CAMERA_OVERVIEW_LERP);
       camera.position.y = THREE.MathUtils.lerp(camera.position.y, 1.15, CAMERA_OVERVIEW_LERP);
       camera.position.z = THREE.MathUtils.lerp(camera.position.z, camZ, CAMERA_OVERVIEW_LERP);
-      camera.lookAt(targetX, 0.6, 0);
+      camera.lookAt(targetX, CAMERA_PITCH_RATIO * camZ, 0);
     } else {
       const rs = rollStates[idx];
       const display = rs.clipPlane.constant - rs.baseX;
@@ -953,7 +962,7 @@ function SceneController({
       camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetX, CAMERA_FOCUS_LERP);
       camera.position.y = THREE.MathUtils.lerp(camera.position.y, 0.75, CAMERA_FOCUS_LERP);
       camera.position.z = THREE.MathUtils.lerp(camera.position.z, camZ, CAMERA_FOCUS_LERP);
-      camera.lookAt(targetX, 0.05, 0);
+      camera.lookAt(targetX, CAMERA_PITCH_RATIO * camZ, 0);
     }
   });
 
