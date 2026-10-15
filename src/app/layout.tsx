@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
-import { Cardo, Cormorant_Garamond } from "next/font/google";
+import { Cardo, Cormorant_Garamond, Space_Grotesk, Unbounded } from "next/font/google";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import PageTransition from "@/components/PageTransition";
 import SceneHeader from "@/components/SceneHeader";
+import PresentationMain from "@/components/PresentationMain";
 import { FilmFocusProvider } from "@/components/FilmFocusProvider";
 import { NavigationPendingProvider } from "@/components/NavigationPendingProvider";
 import CollageBackground from "@/components/CollageBackground";
 import WoodBackground from "@/components/WoodBackground";
+import SpaceBackground from "@/components/SpaceBackground";
 import { getPhotos, getFilmRolls } from "@/lib/photos";
 import site from "@/data/site.json";
-import { THEME } from "@/lib/theme";
+import { THEME, hexToRgbTriplet } from "@/lib/theme";
 import "./globals.css";
 
 // The site's only color palette lives in src/data/theme.json — this turns
@@ -19,7 +21,10 @@ import "./globals.css";
 // resolves against, so editing that one file re-themes every page. See
 // src/lib/theme.ts for the two spots (WebGL colors, one inline glow) that
 // can't just read a CSS var and import theme.json directly instead.
-const THEME_STYLE = `:root{--background:${THEME.background};--foreground:${THEME.foreground};--muted:${THEME.muted};--accent:${THEME.accent};--accent-bright:${THEME.accentBright};}`;
+// --accent-bright-rgb is the same accent as a bare "r, g, b" triplet, for
+// the handful of glows/shadows that need it at a custom alpha in plain CSS
+// or a Tailwind arbitrary value: rgba(var(--accent-bright-rgb), 0.4).
+const THEME_STYLE = `:root{--background:${THEME.background};--foreground:${THEME.foreground};--muted:${THEME.muted};--accent:${THEME.accent};--accent-bright:${THEME.accentBright};--accent-bright-rgb:${hexToRgbTriplet(THEME.accentBright)};}`;
 
 // One on/off switch per decorative background layer, in one place, instead
 // of commenting an import and its JSX in and out every time one gets
@@ -27,17 +32,26 @@ const THEME_STYLE = `:root{--background:${THEME.background};--foreground:${THEME
 // "get rid of X for now" / "bring Y back" actually were. Flip a value here,
 // nothing else needs touching.
 //
-// grain and vignette aren't in this list: they're plain CSS
-// (body::before/::after in globals.css), not React-rendered like the
-// layers below, so they don't have a prop to gate on the way these do —
-// ask if you want those wired into this same system too.
 const LAYERS = {
-  wood: true, // WoodBackground.tsx — the true backmost layer, static wood grain
-  collage: true, // CollageBackground.tsx — the static forest/stream photo
+  space: true, // SpaceBackground.tsx — the 3D asteroid canyon / gold dust scene
+  wood: false, // WoodBackground.tsx — the true backmost layer, static wood grain
+  collage: false, // CollageBackground.tsx — the static forest/stream photo
   collageClouds: false, // the three drifting wind*.png clouds inside it
   fog: false,
   lightLeak: false,
   scratches: false, // the diagonal streak texture
+  // These two are plain CSS (body::before/::after in globals.css) rather
+  // than React-rendered, so they're gated by a class on <html> instead
+  // (.no-grain / .no-vignette) — same switch, different mechanism.
+  grain: false, // the page-wide flickering film grain
+  vignette: false, // the darkened viewport edges
+  // Paused for performance: when false, every *background* animation holds
+  // still — the page-wide grain flicker and the logo grain (via .bg-paused
+  // in globals.css), plus the collage backdrop's rotation and its
+  // per-frame SVG warp (see CollageBackground's `animate` prop). The
+  // layers themselves still render, just as a still frame. Flip back to
+  // true to bring the motion back.
+  animate: false,
 };
 
 const cardo = Cardo({
@@ -58,6 +72,21 @@ const cormorant = Cormorant_Garamond({
   style: ["normal", "italic"],
 });
 
+// The spec-card UI (SpecCard.tsx — home tickets, Projects/Audio/Graphic
+// cards): Unbounded is the heavy, extra-wide display face for card titles;
+// Space Grotesk the small technical labels, rows and numbers.
+const unbounded = Unbounded({
+  variable: "--font-unbounded",
+  subsets: ["latin"],
+  weight: ["500", "700", "900"],
+});
+
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+});
+
 export const metadata: Metadata = {
   title: `${site.name} — ${site.role}`,
   description: `${site.role} portfolio of ${site.name}.`,
@@ -75,7 +104,17 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${cardo.variable} ${cormorant.variable} h-full antialiased`}
+      className={[
+        cardo.variable,
+        cormorant.variable,
+        unbounded.variable,
+        spaceGrotesk.variable,
+        "h-full antialiased",
+        LAYERS.space ? "space-bg" : "",
+        LAYERS.animate ? "" : "bg-paused",
+        LAYERS.grain ? "" : "no-grain",
+        LAYERS.vignette ? "" : "no-vignette",
+      ].join(" ")}
     >
       <head>
         <style dangerouslySetInnerHTML={{ __html: THEME_STYLE }} />
@@ -87,8 +126,9 @@ export default function RootLayout({
             tunable. aria-hidden + pointer-events:none: purely decorative,
             never part of the page's content or interaction. Each one's
             on/off state lives in the LAYERS config above. */}
+        {LAYERS.space && <SpaceBackground />}
         {LAYERS.wood && <WoodBackground />}
-        {LAYERS.collage && <CollageBackground showClouds={LAYERS.collageClouds} />}
+        {LAYERS.collage && <CollageBackground showClouds={LAYERS.collageClouds} animate={LAYERS.animate} />}
         {LAYERS.fog && <div aria-hidden className="fog" />}
         {LAYERS.lightLeak && <div aria-hidden className="light-leak" />}
         {LAYERS.scratches && <div aria-hidden className="scratches" />}
@@ -98,10 +138,10 @@ export default function RootLayout({
         <NavigationPendingProvider>
           <SiteHeader />
           <FilmFocusProvider>
-            <main className="relative flex-1">
+            <PresentationMain>
               <SceneHeader filmRolls={filmRolls} digitalCount={digitalCount} />
               <PageTransition>{children}</PageTransition>
-            </main>
+            </PresentationMain>
           </FilmFocusProvider>
         </NavigationPendingProvider>
         <SiteFooter />

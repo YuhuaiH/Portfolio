@@ -1,11 +1,9 @@
 {
-  "boxes": [
-    { "heading": "Work", "href": "/work", "text": "Film & digital photography" },
-    { "heading": "About", "href": "/about", "text": "Who is Yuhuai?" },
-    { "heading": "Contact", "text": "[{{email}}](mailto:{{email}})" },
-    {
-      "heading": "Elsewhere",
-      "text": "[Instagram](https://instagram.com/yuhuaih) · [LinkedIn](https://www.linkedin.com/in/yuhuai-huang-07980b205/)"
-    }
+  "tickets": [
+    { "heading": "Projects", "href": "/projects", "text": "Games, code & experiments" },
+    { "heading": "Photography", "href": "/photography", "text": "Film & digital" },
+    { "heading": "Audio", "href": "/audio", "text": "Music & sound design" },
+    { "heading": "Graphic", "href": "/graphic", "text": "Posters, books & layout" },
+    { "heading": "About", "href": "/about", "text": "Who is Yuhuai?" }
   ]
 }

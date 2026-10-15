@@ -1,6 +1,13 @@
+"use client";
+
 import site from "@/data/site.json";
+import { usePresentationMode } from "@/lib/usePresentationMode";
 
 export default function SiteFooter() {
+  const presentation = usePresentationMode();
+
+  if (presentation) return null;
+
   return (
     <footer className="flex flex-col items-center gap-2 px-6 py-6 text-center text-xs tracking-[0.15em] text-muted uppercase">
       <div className="flex gap-4">

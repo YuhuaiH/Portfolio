@@ -1,0 +1,385 @@
+[
+  {
+    "slug": "the-ghost-of-joseph-priestley",
+    "title": "The Ghost of Joseph Priestley",
+    "year": "2026",
+    "role": "Programmer & Sound Designer",
+    "summary": "An AI-powered interactive installation where visitors converse with the ghost of 18th-century scientist Joseph Priestley through a diary-based interface.",
+    "cover": "/works/the-ghost-of-joseph-priestley/cover.jpg",
+    "tags": ["Installation", "AI", "ETC"],
+    "links": [{ "label": "Project Website", "url": "https://projects.etc.cmu.edu/ghaist/" }],
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "An AI-powered interactive experience bringing 18th-century scientist Joseph Priestley to life. Joseph Priestley discovered oxygen, invented carbonated water, and befriended Benjamin Franklin before fleeing England for revolutionary America. Yet most people have never heard of him."
+      },
+      {
+        "type": "paragraph",
+        "text": "This project creates an entertaining, portable installation where visitors converse with Priestley's \"ghost\" through a diary-based interface. Using LLM technology, the experience is designed for the Priestley-Forsyth Memorial Library in Northumberland, PA, and travels to schools and conferences, sparking curiosity about Priestley as a person."
+      },
+      {
+        "type": "image",
+        "src": "/works/the-ghost-of-joseph-priestley/trailer.jpg",
+        "alt": "Still from The Ghost of Joseph Priestley trailer",
+        "caption": "From the trailer",
+        "aspectRatio": "16 / 9"
+      },
+      {
+        "type": "gallery",
+        "aspectRatio": "3 / 2",
+        "images": [
+          { "src": "/works/the-ghost-of-joseph-priestley/01.jpg", "alt": "The Ghost of Joseph Priestley installation" },
+          { "src": "/works/the-ghost-of-joseph-priestley/02.jpg", "alt": "The Ghost of Joseph Priestley installation" },
+          { "src": "/works/the-ghost-of-joseph-priestley/03.jpg", "alt": "The Ghost of Joseph Priestley installation" },
+          { "src": "/works/the-ghost-of-joseph-priestley/04.jpg", "alt": "The Ghost of Joseph Priestley installation" }
+        ]
+      },
+      {
+        "type": "image",
+        "src": "/works/the-ghost-of-joseph-priestley/05.jpg",
+        "alt": "The Ghost of Joseph Priestley installation",
+        "aspectRatio": "3 / 2"
+      }
+    ]
+  },
+  {
+    "slug": "cavern-gp",
+    "title": "Cavern GP",
+    "year": "2025",
+    "role": "Programmer, Game Designer, Artist & Sound Designer",
+    "summary": "A massive local multiplayer racing game for the Cavern — a 270° curved projection screen at CMU's Entertainment Technology Center — where the crowd cheers drivers into overtakes, crashes and fast corners.",
+    "cover": "/works/cavern-gp/cover.jpg",
+    "tags": ["Game", "Unity", "ETC"],
+    "links": [
+      { "label": "Project Website", "url": "https://projects.etc.cmu.edu/270-degree-fun/" },
+      {
+        "label": "Documentation",
+        "url": "https://docs.google.com/document/d/1fZHUSGTnWkFYrxo2k6uY9g8hPcA-_BCsDHzC8WvrAdU/edit?usp=sharing"
+      }
+    ],
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "Team 270° Fun developed a massive local multiplayer racing game focused on building community through sports. Designed for the Cavern system at the Entertainment Technology Center (ETC), the project utilizes the Cavern, a 270° curved projection screen and a 20-foot-wide interactive play area, enabling dynamic local multiplayer interactions within virtual environments."
+      },
+      {
+        "type": "paragraph",
+        "text": "The project's goal is to find a balance between having player agency and still feeling like part of the audience. Players work together as cheerleaders and fans, cheering for their favorite teams, affecting the drivers' behavior and causing overtakes, crashes, and fast cornering. This teamwork evokes a sense of belonging, deepening players' relationship with others supporting the same team."
+      },
+      {
+        "type": "paragraph",
+        "text": "The game was played at the ETC 2025 Fall Festival and received massive positive reviews. It also broke the record for the largest number of players in the Cavern — from 6 to 26."
+      },
+      {
+        "type": "paragraph",
+        "text": "I was mainly responsible for programming, game design, UI/UX, and sound design. My specific approach to each of those features can be found in the [documentation](https://docs.google.com/document/d/1fZHUSGTnWkFYrxo2k6uY9g8hPcA-_BCsDHzC8WvrAdU/edit?usp=sharing)."
+      },
+      {
+        "type": "image",
+        "src": "/works/cavern-gp/trailer.jpg",
+        "alt": "Still from the Cavern GP trailer",
+        "caption": "From the trailer",
+        "aspectRatio": "16 / 9"
+      },
+      {
+        "type": "image",
+        "src": "/works/cavern-gp/onboarding.jpg",
+        "alt": "Cavern GP onboarding storyboard",
+        "caption": "Onboarding storyboard — used as a tutorial for festival guests",
+        "aspectRatio": "16 / 9"
+      },
+      { "type": "heading", "text": "Highlights", "level": 2 },
+      { "type": "heading", "text": "Waypoint System", "level": 3 },
+      {
+        "type": "paragraph",
+        "text": "The waypoint system guides cars along track paths with player-influenced speed, while lane switching enables overtakes, crashes and drifting. Designers can adjust it right inside the Unity Editor, which helped us build out the pipeline."
+      },
+      {
+        "type": "list",
+        "items": ["Easy for iteration and customization", "Great physics simulation"]
+      },
+      { "type": "video", "src": "/works/cavern-gp/waypoints.mp4", "loop": true },
+      { "type": "heading", "text": "Mobile Controller", "level": 3 },
+      {
+        "type": "paragraph",
+        "text": "The mobile controller system lets players use their phones as real-time input devices to control the in-game vehicles. It connects Unity with external devices through a Node.js server, using HTML and JavaScript interfaces for seamless interaction — enabling multiplayer gameplay without additional hardware, and an easily customizable input layer for future projects."
+      },
+      {
+        "type": "list",
+        "items": [
+          "Real-time synchronization between mobile browsers and Unity",
+          "Flexible, web-based input interface for rapid testing and iteration",
+          "Fully local, low-latency communication via Node.js server"
+        ]
+      },
+      { "type": "video", "src": "/works/cavern-gp/mobile-controller.mp4", "loop": true, "narrow": true }
+    ]
+  },
+  {
+    "slug": "the-tale-of-oath",
+    "title": "The Tale of Oath",
+    "role": "Gameplay Programmer, VFX & Music",
+    "summary": "A third-person, magic-based action-adventure set in Rifts England — a level design vertical slice from CMU's Entertainment Technology Center, now on Steam.",
+    "cover": "/works/the-tale-of-oath/cover.jpg",
+    "tags": ["Game", "Level Design", "ETC"],
+    "links": [
+      { "label": "Steam", "url": "https://store.steampowered.com/app/3900080/The_Tale_of_Oath/" },
+      { "label": "Itch", "url": "https://cwj.itch.io/quessant" },
+      {
+        "label": "Documentation",
+        "url": "https://docs.google.com/document/d/1LghiPeTN8Bva14sz1xjvyhQPLn83Leh4Is_4JOvyXB8/edit?usp=sharing"
+      }
+    ],
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "The Tale of Oath is a third-person action-adventure level design project from Carnegie Mellon University's Entertainment Technology Center, set in the Rifts Universe and bringing players into the mystical landscapes of Rifts England. The project centers on a magic-based adventure that emphasizes exploration, puzzle-solving, and world immersion."
+      },
+      {
+        "type": "paragraph",
+        "text": "The goal was to deliver a playable vertical slice that showcases the game's core mechanics — magic casting, environmental navigation, narrative worldbuilding, and Druid rescue — as a polished, self-contained experience. The game is now on [Steam](https://store.steampowered.com/app/3900080/The_Tale_of_Oath/)."
+      },
+      {
+        "type": "paragraph",
+        "text": "I was mainly responsible for gameplay programming, VFX, and music. My specific approach to each can be found in the [documentation](https://docs.google.com/document/d/1LghiPeTN8Bva14sz1xjvyhQPLn83Leh4Is_4JOvyXB8/edit?usp=sharing)."
+      },
+      {
+        "type": "image",
+        "src": "/works/the-tale-of-oath/gameplay.jpg",
+        "alt": "Still from The Tale of Oath gameplay video",
+        "caption": "From the gameplay video",
+        "aspectRatio": "16 / 9"
+      },
+      {
+        "type": "image",
+        "src": "/works/the-tale-of-oath/vfx.jpg",
+        "alt": "Still from The Tale of Oath VFX compilation",
+        "caption": "From the VFX compilation",
+        "aspectRatio": "16 / 9"
+      },
+      { "type": "heading", "text": "Spell System Showcase", "level": 2 },
+      {
+        "type": "gallery",
+        "aspectRatio": "16 / 9",
+        "images": [
+          { "src": "/works/the-tale-of-oath/spell-01.mp4", "alt": "Spell effect" },
+          { "src": "/works/the-tale-of-oath/spell-02.mp4", "alt": "Spell effect" },
+          { "src": "/works/the-tale-of-oath/spell-03.mp4", "alt": "Spell effect" },
+          { "src": "/works/the-tale-of-oath/spell-04.mp4", "alt": "Spell effect" },
+          { "src": "/works/the-tale-of-oath/spell-05.mp4", "alt": "Spell effect" },
+          { "src": "/works/the-tale-of-oath/spell-06.mp4", "alt": "Spell effect" },
+          { "src": "/works/the-tale-of-oath/spell-07.mp4", "alt": "Spell effect" },
+          { "src": "/works/the-tale-of-oath/spell-08.mp4", "alt": "Spell effect" },
+          { "src": "/works/the-tale-of-oath/spell-09.mp4", "alt": "Spell effect" },
+          { "src": "/works/the-tale-of-oath/spell-10.mp4", "alt": "Spell effect" }
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "mento-issue",
+    "title": "Mento Issue",
+    "year": "2025",
+    "role": "Game Designer, Programmer, Artist & Sound Designer",
+    "summary": "A Global Game Jam 2025 game on the theme \"Bubble\", built around the reaction between Mentos and soda — winner of the Non-Traditional Award at GGJ Pittsburgh.",
+    "cover": "/works/mento-issue/cover.jpg",
+    "tags": ["Game", "Game Jam"],
+    "links": [{ "label": "Itch", "url": "https://yenchun.itch.io/mento-issue" }],
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "Yen-Chun Huang, Jack Peng, Alex Hall, and I attended the Global Game Jam Pittsburgh. The theme of the jam was \"bubbles,\" which inspired us to create a game based on the reaction between Mentos and soda. Our concept was well received by the audience, earning us the Non-Traditional Award at the event."
+      },
+      {
+        "type": "paragraph",
+        "text": "Players control half a pack of Mentiez (a Mentos-like candy) with the ability to throw mints. The goal is to reunite with the other half of the pack — but the only way to navigate the map is by using Mentos to trigger special bubble effects from sodas."
+      },
+      {
+        "type": "paragraph",
+        "text": "The first version of the game is available on both [itch.io](https://yenchun.itch.io/mento-issue) and the GGJ website. Feel free to check it out and enjoy a piece of Mentiez!"
+      },
+      {
+        "type": "image",
+        "src": "/works/mento-issue/poster.jpg",
+        "alt": "Mento Issue key art",
+        "aspectRatio": "1 / 1"
+      },
+      {
+        "type": "image",
+        "src": "/works/mento-issue/gameplay.jpg",
+        "alt": "Still from the Mento Issue gameplay showcase",
+        "caption": "From the gameplay showcase",
+        "aspectRatio": "16 / 10"
+      },
+      {
+        "type": "gallery",
+        "aspectRatio": "16 / 9",
+        "images": [
+          { "src": "/works/mento-issue/01.jpg", "alt": "Mento Issue screenshot" },
+          { "src": "/works/mento-issue/02.jpg", "alt": "Mento Issue screenshot" }
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "building-virtual-worlds",
+    "title": "Building Virtual Worlds",
+    "year": "2024",
+    "role": "Game Designer, Programmer, Artist & Sound Designer",
+    "summary": "Interactive experiences built in rapid rounds at the Entertainment Technology Center — VR, eye trackers, foot pedals and adaptive controllers.",
+    "cover": "/works/building-virtual-worlds/cover.jpg",
+    "tags": ["Game", "VR", "ETC"],
+    "blocks": [
+      { "type": "heading", "text": "Barr VR", "level": 2 },
+      {
+        "type": "paragraph",
+        "text": "October 2024 · Game Designer, Artist & Sound Designer"
+      },
+      {
+        "type": "paragraph",
+        "text": "A VR game focused on throwing and dodging, made with programmers and artists — my first attempt at VR development, and an invaluable experience. Gameplay revolves around a card-drawing mechanic: both the player and the enemy draw cards to determine who throws and who dodges. Draw high, and you have 15 seconds to throw bottles at the enemy using the VR controllers, specifically tuned for a better throwing feel. Draw low, and the enemy takes their turn while you dodge projectiles using physical movement."
+      },
+      {
+        "type": "gallery",
+        "aspectRatio": "4 / 5",
+        "images": [
+          { "src": "/works/building-virtual-worlds/barr-vr.jpg", "alt": "Barr VR" },
+          {
+            "src": "/works/building-virtual-worlds/barr-vr-demo.jpg",
+            "alt": "Still from the Barr VR demo video",
+            "caption": "From the demo video"
+          }
+        ]
+      },
+      { "type": "heading", "text": "Lizard Boom!", "level": 2 },
+      {
+        "type": "paragraph",
+        "text": "November 2024 · Game Designer, Programmer & Sound Designer"
+      },
+      {
+        "type": "paragraph",
+        "text": "A multiplayer game using eye trackers and adaptive controllers. Each round, a bomb spawns on a random player, who has to pass it on to survive. The eye tracker steers how each player moves around the map, and the buttons on the adaptive controllers punch and pass the bomb."
+      },
+      {
+        "type": "gallery",
+        "aspectRatio": "16 / 9",
+        "images": [
+          {
+            "src": "/works/building-virtual-worlds/lizard-boom-1.jpg",
+            "alt": "Still from the Lizard Boom! demo video",
+            "caption": "From demo video 1"
+          },
+          {
+            "src": "/works/building-virtual-worlds/lizard-boom-2.jpg",
+            "alt": "Still from the Lizard Boom! demo video",
+            "caption": "From demo video 2"
+          }
+        ]
+      },
+      { "type": "heading", "text": "Shell Yeah!", "level": 2 },
+      {
+        "type": "paragraph",
+        "text": "November 2024 · Game Designer, Programmer, Artist & Sound Designer"
+      },
+      {
+        "type": "paragraph",
+        "text": "A 4-player adaptation of Red Light, Green Light, made with one programmer and two artists. Three players steer crabs using foot pedals, while the fourth plays the Octopus on the Xbox Adaptive Controller, holding a button to fire a laser at them. Like a rhythm game, the crabs follow UI prompts on the pedals to move faster and escape the laser — and holding every button at once hides them inside a can, blocking it entirely."
+      },
+      {
+        "type": "gallery",
+        "aspectRatio": "16 / 9",
+        "images": [
+          {
+            "src": "/works/building-virtual-worlds/shell-yeah-1.jpg",
+            "alt": "Still from the Shell Yeah! demo video",
+            "caption": "From the demo video"
+          },
+          {
+            "src": "/works/building-virtual-worlds/shell-yeah-2.jpg",
+            "alt": "Still from the Shell Yeah! demo video",
+            "caption": "From the demo video"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "scotty3d",
+    "title": "Scotty3D",
+    "role": "Programmer",
+    "summary": "A 3D modeling, rendering and animation package built for CMU's 15-362/662 Computer Graphics — rasterization, mesh editing, path tracing and animation.",
+    "cover": "/works/scotty3d/cover.jpg",
+    "tags": ["Graphics", "C++"],
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "Scotty3D is a 3D modeling, rendering, and animation package that students complete as part of 15-362/662 Computer Graphics at Carnegie Mellon University. The features I implemented include rasterization, mesh editing, path tracing, and animation."
+      },
+      {
+        "type": "image",
+        "src": "/works/scotty3d/ui.jpg",
+        "alt": "Scotty3D user interface",
+        "caption": "User interface",
+        "aspectRatio": "1100 / 653"
+      },
+      {
+        "type": "image",
+        "src": "/works/scotty3d/rasterization.png",
+        "alt": "Scotty3D rasterization",
+        "caption": "Rasterization",
+        "aspectRatio": "1100 / 366"
+      },
+      {
+        "type": "image",
+        "src": "/works/scotty3d/path-tracing.jpg",
+        "alt": "Scotty3D path tracing",
+        "caption": "Path tracing",
+        "aspectRatio": "1100 / 618"
+      },
+      {
+        "type": "image",
+        "src": "/works/scotty3d/skeleton.jpg",
+        "alt": "Scotty3D skeleton",
+        "caption": "Skeleton",
+        "aspectRatio": "1100 / 586"
+      },
+      {
+        "type": "image",
+        "src": "/works/scotty3d/animation.jpg",
+        "alt": "Still from the Scotty3D animation video",
+        "caption": "Animation",
+        "aspectRatio": "16 / 9"
+      }
+    ]
+  },
+  {
+    "slug": "baller",
+    "title": "Baller",
+    "year": "2023",
+    "role": "UI & Music",
+    "summary": "A class project built around a game of catch between two people — every time the ball is caught, a small part of the gameplay changes.",
+    "cover": "/works/baller/cover.jpg",
+    "tags": ["Game"],
+    "links": [{ "label": "Itch", "url": "https://megapig9001.itch.io/baller" }],
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "Baller is a class project based around the idea of playing a game of catch with two people. Each time the ball is caught, a small part of the gameplay changes. The concept was designed to keep the scope low, and to be easily expandable."
+      },
+      {
+        "type": "image",
+        "src": "/works/baller/01.png",
+        "alt": "Baller",
+        "aspectRatio": "578 / 383"
+      },
+      {
+        "type": "gallery",
+        "aspectRatio": "16 / 9",
+        "images": [
+          { "src": "/works/baller/02.jpg", "alt": "Baller screenshot" },
+          { "src": "/works/baller/03.png", "alt": "Baller screenshot" }
+        ]
+      }
+    ]
+  }
+]

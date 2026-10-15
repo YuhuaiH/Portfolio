@@ -6,10 +6,11 @@ import type { FilmRoll } from "@/lib/photos";
 import { formatDate } from "./PhotoInfoModal";
 import { useFilmFocus } from "./FilmFocusProvider";
 import { useNavigationPending } from "./NavigationPendingProvider";
+import { usePresentationMode } from "@/lib/usePresentationMode";
 
 const TABS = [
-  { href: "/work", label: "Film", key: "film" },
-  { href: "/work/digital", label: "Digital", key: "digital" },
+  { href: "/photography", label: "Film", key: "film" },
+  { href: "/photography/digital", label: "Digital", key: "digital" },
 ] as const;
 
 // Matches each tab button's fixed width — the sliding highlight below is
@@ -34,10 +35,11 @@ export default function SceneHeader({
   const pathname = usePathname();
   const { focusedIndex, setFocusedIndex } = useFilmFocus();
   const { startNavigating } = useNavigationPending();
+  const presentation = usePresentationMode();
   const active =
-    pathname === "/work/digital" ? "digital" : pathname === "/work" ? "film" : null;
+    pathname === "/photography/digital" ? "digital" : pathname === "/photography" ? "film" : null;
 
-  if (!active) return null;
+  if (!active || presentation) return null;
 
   const activeIndex = TABS.findIndex((tab) => tab.key === active);
   const focused = active === "film" && focusedIndex !== null ? filmRolls[focusedIndex] : null;

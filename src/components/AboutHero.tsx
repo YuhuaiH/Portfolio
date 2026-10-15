@@ -102,7 +102,7 @@ export default function AboutHero() {
           aria-hidden
           className="animate-eye-glow pointer-events-none absolute -inset-8 rounded-full blur-3xl"
           style={{
-            background: "radial-gradient(circle, rgba(219,168,63,0.3) 0%, rgba(219,168,63,0) 70%)",
+            background: "radial-gradient(circle, rgba(var(--accent-bright-rgb),0.3) 0%, rgba(var(--accent-bright-rgb),0) 70%)",
           }}
         />
         <OrbitText />
@@ -136,7 +136,7 @@ export default function AboutHero() {
           </div>
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 rounded-full border-4 border-accent-bright/40 shadow-[0_0_40px_-10px_rgba(219,168,63,0.5)]"
+            className="pointer-events-none absolute inset-0 rounded-full border-4 border-accent-bright/40 shadow-[0_0_40px_-10px_rgba(var(--accent-bright-rgb),0.5)]"
           />
         </div>
       </div>

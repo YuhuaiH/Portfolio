@@ -42,3 +42,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Lossless .wav masters for public/audio/ (the site serves .mp3 copies) — kept locally, too big for the repo
+/audio-masters/

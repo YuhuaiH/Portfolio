@@ -13,7 +13,7 @@ export default function DigitalCityExplorer() {
     // disabled scene's full footprint: there's no scene to reserve room
     // for anymore, and the old height combined with mb-16 stacking on
     // this page's own pb-16 pushed the page past one viewport, the same
-    // bug fixed on /work.
+    // bug fixed on /photography.
     <section className="mb-2">
       {/* The heading + film/digital switcher live in SceneHeader (rendered
           once in layout.tsx) rather than here. */}

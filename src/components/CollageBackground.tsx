@@ -37,7 +37,7 @@ const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 // version since it can afford it, mobile gets the static one — still
 // warped, still moving (via .bg-drift / the wind photos' own rotation),
 // just without the perpetual recomputation cost.
-function CollageDistortFilter() {
+function CollageDistortFilter({ animate }: { animate: boolean }) {
   // The <animate> below is SVG SMIL, a completely separate animation
   // mechanism from CSS — fixing .bg-drift's CSS animation-delay (see
   // bgDriftDelay in CollageBackground) does nothing for this one; it has
@@ -61,13 +61,15 @@ function CollageDistortFilter() {
           itself is still fully alive. */}
       <filter id="collage-distort-animated" x="-20%" y="-20%" width="140%" height="140%">
         <feTurbulence type="fractalNoise" baseFrequency="0.012 0.02" numOctaves="1" seed="7" result="noise">
-          <animate
-            attributeName="baseFrequency"
-            dur="40s"
-            values="0.010 0.018;0.017 0.024;0.010 0.018"
-            repeatCount="indefinite"
-            begin={distortBegin}
-          />
+          {animate && (
+            <animate
+              attributeName="baseFrequency"
+              dur="40s"
+              values="0.010 0.018;0.017 0.024;0.010 0.018"
+              repeatCount="indefinite"
+              begin={distortBegin}
+            />
+          )}
         </feTurbulence>
         <feDisplacementMap in="SourceGraphic" in2="noise" scale="45" xChannelSelector="R" yChannelSelector="G" />
       </filter>
@@ -108,7 +110,16 @@ const BACKGROUND_TINT = "saturate(0.65) sepia(0.22) brightness(0.28) contrast(1.
 // the static backdrop — the backdrop itself always renders whenever this
 // component is mounted at all (see LAYERS.collage in layout.tsx for that
 // on/off switch); this is the finer-grained one *within* it.
-export default function CollageBackground({ showClouds = false }: { showClouds?: boolean }) {
+// animate: false (see LAYERS.animate in layout.tsx) freezes the whole
+// layer into a still frame — no .bg-drift rotation, no SMIL warp cycle —
+// so the browser composites it once instead of recomputing it every frame.
+export default function CollageBackground({
+  showClouds = false,
+  animate = true,
+}: {
+  showClouds?: boolean;
+  animate?: boolean;
+}) {
   // "bg-drift" here must match the animation name in globals.css (180s) —
   // it's just a sessionStorage key, not a literal reference to the CSS,
   // but keeping it the same name makes the connection obvious.
@@ -116,7 +127,7 @@ export default function CollageBackground({ showClouds = false }: { showClouds?:
 
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      <CollageDistortFilter />
+      <CollageDistortFilter animate={animate} />
       {/* The backdrop the clouds drift in front of. Gets the same
           responsive warp (DISTORT_VAR) as the clouds below, plus its own
           slow independent rotation (.bg-drift, see globals.css) — much
@@ -138,10 +149,12 @@ export default function CollageBackground({ showClouds = false }: { showClouds?:
       <img
         src={`${BASE_PATH}/resources/background.png`}
         alt=""
-        className={`bg-drift absolute inset-0 h-full w-full object-cover opacity-[0.35] ${DISTORT_VAR}`}
+        className={`${animate ? "bg-drift" : ""} absolute inset-0 h-full w-full object-cover opacity-[0.35] ${DISTORT_VAR}`}
         style={{
           filter: `var(--collage-distort) ${BACKGROUND_TINT}`,
-          animationDelay: bgDriftDelay,
+          // Paused: hold .bg-drift's starting frame (same 2.4 overscan), so
+          // the framing doesn't jump when the animation's switched off.
+          ...(animate ? { animationDelay: bgDriftDelay } : { transform: "scale(2.4)" }),
         }}
       />
       {showClouds && (

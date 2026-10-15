@@ -4,10 +4,10 @@ import site from "@/data/site.json";
 import { getPhotos, getFilmRolls } from "@/lib/photos";
 
 export const metadata: Metadata = {
-  title: `Work — ${site.name}`,
+  title: `Photography — ${site.name}`,
 };
 
-export default function WorkPage() {
+export default function PhotographyPage() {
   const photos = getPhotos();
   const filmRolls = getFilmRolls(photos);
 

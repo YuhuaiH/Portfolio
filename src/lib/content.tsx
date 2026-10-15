@@ -12,7 +12,26 @@ export type ContentBlock =
   | { type: "heading"; text: string; level?: 1 | 2 | 3 }
   | { type: "paragraph"; text: string }
   | { type: "image"; src: string; alt: string; caption?: string; aspectRatio?: string }
-  | { type: "gallery"; images: { src: string; alt: string; caption?: string }[]; columns?: 2 | 3 }
+  | {
+      type: "gallery";
+      // An item whose src ends in .mp4 plays as a silent looping clip.
+      images: { src: string; alt: string; caption?: string }[];
+      columns?: 2 | 3;
+      aspectRatio?: string; // default "1 / 1"
+    }
+  | { type: "list"; items: string[] }
+  | {
+      type: "video";
+      src: string;
+      caption?: string;
+      // loop: a silent GIF-style clip that plays itself while on screen.
+      // Otherwise a regular player with controls.
+      loop?: boolean;
+      // narrow: capped to phone width — for portrait/vertical footage.
+      narrow?: boolean;
+    }
+  | { type: "audio"; src: string; title?: string; caption?: string }
+  | { type: "embed"; src: string; title: string; aspectRatio?: string; height?: number }
   | { type: "spacer"; size?: "sm" | "md" | "lg" };
 
 const SITE_VARS: Record<string, string> = {

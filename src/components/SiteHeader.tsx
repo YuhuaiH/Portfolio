@@ -1,102 +1,140 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import site from "@/data/site.json";
 import SiteNav from "./SiteNav";
-import { THEME, hexToRgba } from "@/lib/theme";
 import { useNavigationPending } from "./NavigationPendingProvider";
+import { usePresentationMode } from "@/lib/usePresentationMode";
 
 // next/image never applies basePath to a hardcoded src when
-// images.unoptimized is on (required for static export) — the
-// basePath-prefixing logic lives in the default loader, which
-// unoptimized mode bypasses entirely. Same fix as FilmScene.tsx /
-// DigitalCityScene.tsx.
+// images.unoptimized is on (required for static export), and this URL is
+// used as a CSS mask anyway, which nothing would prefix — so prefix it by
+// hand, same as FilmScene.tsx / DigitalCityScene.tsx.
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-const LOGO_SRC = `${BASE_PATH}/resources/logo%20Yuhuai.svg`;
+// logo-mask.svg, not the original logo file: generated from it so the
+// letters' dark inner detail survives as a partly-transparent cut (an alpha
+// mask ignores color, so the original's two tones would merge into one
+// flat gold silhouette).
+const LOGO_SRC = `${BASE_PATH}/resources/logo-mask.svg`;
 
-// A grayscale-noise tile like the page-wide grain in globals.css, but with
-// an added contrast boost (the feComponentTransfer below): raw turbulence
-// output clusters tightly around mid-gray, which read as barely-there haze
-// once multiplied over the logo's thin letterform strokes. Stretching the
-// contrast (linear, slope 3 / intercept -1) pushes it toward actual black/
-// white blotches, so the grain reads as grain instead of a faint blur.
-const GRAIN_TILE =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='70' height='70'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch' result='t'/%3E%3CfeColorMatrix in='t' type='saturate' values='0' result='g'/%3E%3CfeComponentTransfer in='g'%3E%3CfeFuncR type='linear' slope='3' intercept='-1'/%3E%3CfeFuncG type='linear' slope='3' intercept='-1'/%3E%3CfeFuncB type='linear' slope='3' intercept='-1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E";
+// The logo's letterforms are used purely as a *shape* (a CSS mask), and
+// the color comes from this gradient instead of the SVG's own flat fill —
+// that's what turns a flat saturated gold into polished metal: a bright
+// lip along the top of every stroke, a darker band through the middle
+// where the "metal" faces away from the light, and a warm bounce back up
+// at the bottom. Same pale, desaturated gold family as the space scene
+// (SpaceBackground.tsx) and the eye's haze, so the mark finally belongs
+// to the same palette as everything around it.
+const GILT = [
+  "linear-gradient(180deg,",
+  "#fbf1d2 0%,",
+  "#e9d4a0 22%,",
+  "#c7a462 46%,",
+  "#8e6f38 58%,",
+  "#c9a868 74%,",
+  "#efdcab 100%)",
+].join(" ");
+
+const MASK = {
+  WebkitMaskImage: `url("${LOGO_SRC}")`,
+  WebkitMaskSize: "contain",
+  WebkitMaskRepeat: "no-repeat",
+  WebkitMaskPosition: "center",
+  maskImage: `url("${LOGO_SRC}")`,
+  maskSize: "contain",
+  maskRepeat: "no-repeat",
+  maskPosition: "center",
+} as const;
+
+// The thin four-point glint from SpaceBackground's sparkles, drawn as an
+// SVG so it stays crisp at any size.
+function Glint({ className, delay }: { className: string; delay: string }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      className={`logo-glint pointer-events-none absolute ${className}`}
+      style={{ animationDelay: delay }}
+    >
+      <path
+        d="M12 0C12.6 7.6 16.4 11.4 24 12C16.4 12.6 12.6 16.4 12 24C11.4 16.4 7.6 12.6 0 12C7.6 11.4 11.4 7.6 12 0Z"
+        fill="#f3e6c4"
+      />
+    </svg>
+  );
+}
+
+// Logo hidden while its treatment gets rethought — flip back to true to
+// bring the gilt mark (everything below) back. With it off, the header is
+// just the nav; on the home page, where SiteNav renders nothing (the
+// eye's tickets are the nav there), the header drops out entirely rather
+// than leaving an empty padded band above the eye.
+const SHOW_LOGO = false;
 
 export default function SiteHeader() {
   const pathname = usePathname();
   const { startNavigating } = useNavigationPending();
+  const presentation = usePresentationMode();
+
+  if (presentation) return null;
+  if (!SHOW_LOGO && pathname === "/") return null;
 
   return (
     <header className="flex flex-col items-center gap-3 px-6 py-5 text-center sm:py-6">
-      {/* The glow's `filter` lives on the Image itself now, not this
-          wrapper — a `filter` on an ancestor creates a new stacking
-          context, and mix-blend-mode can only blend an element against
-          content painted behind it *within that same context*. With the
-          filter up here, the Image was the first thing painted inside that
-          new context, so its exclusion blend had nothing behind it to
-          blend with — set correctly but functionally inert. Putting the
-          filter on the Image instead leaves this Link unfiltered, so the
-          Image blends against the actual page background behind it. The
-          one cost: the glow's silhouette is now traced from the Image
-          alone rather than image+grain-span together, but the grain is
-          mask-clipped to that exact same logo shape, so the visible
-          difference is negligible. */}
-      <Link
-        href="/"
-        className="relative inline-block"
-        // pathname !== "/" guard: same reasoning as SiteNav.tsx/
-        // SceneHeader.tsx — clicking the logo while already on the home
-        // page never fires a pathname change, and would leave `pending`
-        // stuck true forever if this fired anyway.
-        onClick={pathname !== "/" ? startNavigating : undefined}
-      >
-        <Image
-          src={LOGO_SRC}
-          alt={site.name}
-          width={1400}
-          height={300}
-          priority
-          className="mix-blend-exclusion h-20 w-auto sm:h-28"
-          style={{
-            filter: [
-              `drop-shadow(0 0 22px ${hexToRgba(THEME.accentBright, 0.65)})`,
-              `drop-shadow(0 0 48px ${hexToRgba(THEME.accentBright, 0.35)})`,
-              "drop-shadow(0 3px 4px rgba(0,0,0,0.6))",
-            ].join(" "),
-          }}
-        />
-        {/* Grain masked to the logo's own silhouette (via the same SVG as
-            its alpha/luminance mask) rather than a plain rectangle overlay
-            — so the speckle sits on the letterforms themselves, like worn
-            ink on a vintage print, instead of floating as a hazy box
-            around them. mix-blend-mode: multiply lets the noise's dark
-            flecks eat into the red fill while the lighter flecks leave it
-            untouched, rather than flattening the whole mark to gray. The
-            background-position animation (see .logo-grain in globals.css)
-            flickers that speckle across the letters instead of leaving it
-            static, so it actually reads as grain rather than a fixed
-            texture easy to mistake for a rendering artifact. */}
-        <span
-          aria-hidden
-          className="logo-grain pointer-events-none absolute inset-0 mix-blend-multiply opacity-85"
-          style={{
-            backgroundImage: `url("${GRAIN_TILE}")`,
-            backgroundSize: "55px 55px",
-            WebkitMaskImage: `url("${LOGO_SRC}")`,
-            WebkitMaskSize: "contain",
-            WebkitMaskRepeat: "no-repeat",
-            WebkitMaskPosition: "center",
-            maskImage: `url("${LOGO_SRC}")`,
-            maskSize: "contain",
-            maskRepeat: "no-repeat",
-            maskPosition: "center",
-            animation: "logo-grain-shift 0.7s steps(5) infinite",
-          }}
-        />
-      </Link>
+      {SHOW_LOGO && (
+        <Link
+          href="/"
+          aria-label={site.name}
+          className="group relative inline-block"
+          // pathname !== "/" guard: same reasoning as SiteNav.tsx/
+          // SceneHeader.tsx — clicking the logo while already on the home
+          // page never fires a pathname change, and would leave `pending`
+          // stuck true forever if this fired anyway.
+          onClick={pathname !== "/" ? startNavigating : undefined}
+        >
+          {/* The glow lives on this wrapper, not on the masked span below:
+            CSS applies `filter` *before* `mask`, so a drop-shadow on the
+            masked element itself would be clipped away by its own mask.
+            Up here it traces the finished, masked letterforms. Kept tight
+            and faint — light catching a gilded edge, not a neon tube. */}
+          <span
+            className="block"
+            style={{
+              filter: [
+                "drop-shadow(0 0 6px rgba(239,220,171,0.28))",
+                "drop-shadow(0 0 26px rgba(217,192,138,0.14))",
+                "drop-shadow(0 2px 3px rgba(0,0,0,0.7))",
+              ].join(" "),
+            }}
+          >
+            <span
+              aria-hidden
+              className="relative block aspect-[14/3] h-20 overflow-hidden sm:h-28"
+              style={{ ...MASK, backgroundImage: GILT }}
+            >
+              {/* A slow band of light that sweeps across the gold on hover —
+                clipped to the letters by the same mask as the gilt. */}
+              <span
+                className="logo-sheen absolute inset-0"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(105deg, transparent 35%, rgba(255,248,225,0.75) 50%, transparent 65%)",
+                  backgroundSize: "250% 100%",
+                }}
+              />
+            </span>
+          </span>
+          <Glint
+            className="-top-1 right-[3%] h-5 w-5 sm:h-6 sm:w-6"
+            delay="0s"
+          />
+          <Glint
+            className="bottom-[8%] left-[1%] h-3 w-3 sm:h-4 sm:w-4"
+            delay="-2.4s"
+          />
+        </Link>
+      )}
       <SiteNav />
     </header>
   );

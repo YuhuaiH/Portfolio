@@ -195,8 +195,11 @@ function Eyeball({ pupilRef }: { pupilRef: React.RefObject<THREE.Mesh | null> })
     // (sclera) pixels toward white.
     const scleraColorMap = recolorGrayscale(
       scleraDiffuse.image as TexImageSource | undefined,
-      "#7a0d0d",
-      "#f2e8e2",
+      "#6a1410",
+      // Ivory/bone rather than a clean pinkish white — a pure white sclera
+      // was the brightest, least-natural thing in a scene that's otherwise
+      // near-black and candle-lit, and it made the eye read as pasted on.
+      "#ddd2bf",
       1.7
     );
     irisDiffuse.colorSpace = THREE.SRGBColorSpace;
@@ -444,10 +447,21 @@ export default function EyeStage({
         rotation={[0, Math.PI, 0]}
         fov={CAMERA_FOV}
       />
-      <ambientLight intensity={0.55} />
-      <directionalLight position={[-2, 3, -4]} intensity={0.85} />
-      <directionalLight position={[2, -1, -2]} intensity={0.22} color="#dfe8ff" />
-      <pointLight position={[-0.6, 0.8, -2.4]} intensity={0.6} distance={6} />
+      {/* Lit to match SpaceBackground.tsx rather than as a studio product
+          shot, so the eye sits *in* that scene instead of on top of it:
+          - low ambient, so the shadow side actually falls off into the dark
+            the way the rocks around it do (0.55 used to flatten it out);
+          - a warm rim from behind and below — the same canyon light the
+            background's rocks are lit by, wrapping the eye's silhouette
+            in the same gold;
+          - a soft, slightly warm key from the upper left for form;
+          - the same dim cool fill the background uses for its shadows;
+          - a small point light kept only for the wet catchlight. */}
+      <ambientLight intensity={0.14} />
+      <directionalLight position={[0.4, -1.6, 3.5]} intensity={2.2} color="#d6b27a" />
+      <directionalLight position={[-2, 3, -4]} intensity={0.7} color="#efe4cf" />
+      <directionalLight position={[2.5, 2, -1]} intensity={0.18} color="#7f8794" />
+      <pointLight position={[-0.6, 0.8, -2.4]} intensity={0.45} distance={6} />
       <Suspense fallback={null}>
         <EyeRig reaction={reaction} focusPulse={focusPulse} onReady={onReady} />
       </Suspense>

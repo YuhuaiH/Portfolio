@@ -1,7 +1,7 @@
 {
-  "background": "#0c0805",
-  "foreground": "#f2e8d4",
-  "muted": "#96805c",
-  "accent": "#4a3618",
-  "accentBright": "#dba83f"
+  "background": "#232320",
+  "foreground": "#f1ebc6",
+  "muted": "#9c9a88",
+  "accent": "#57553f",
+  "accentBright": "#e8dfa5"
 }

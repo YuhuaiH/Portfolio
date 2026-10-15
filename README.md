@@ -91,6 +91,39 @@ Digital photos get their own 3D scene too — a wireframe neon city ([`src/compo
 
 Supported image extensions: `.jpg`, `.jpeg`, `.png`, `.webp`. `src/lib/photos.ts` reads this folder at build time, validates each JSON file, and reads each image's actual pixel dimensions — you don't need to specify width/height. A missing image, missing field, or invalid `type` fails the build with a message pointing at the offending file.
 
+## Adding audio
+
+The Audio page shows every record as a vinyl sleeve — click one and the record slides out and plays. Records live in `public/audio/`, one folder per record, the same way film rolls do:
+
+```text
+public/audio/
+  my-first-ep/          ← any folder name, it's just an internal id
+    record.json         ← required: name + time
+    cover.jpg           ← optional sleeve art
+    01-intro.mp3        ← every audio file in the folder is a track,
+    02-night-drive.wav     played in filename order
+```
+
+`record.json`:
+
+```json
+{
+  "name": "My First EP",
+  "time": "2025",
+  "artist": "Yuhuai Huang",
+  "description": "A line or two about it."
+}
+```
+
+Only `name` and `time` are required.
+
+- **Tracks:** audio files (`.mp3`, `.wav`, `.ogg`, `.m4a`, `.aac`, `.flac`) play in filename order, so number them to set the order. A track's title is its filename with the leading number tidied away (`01 - A Lost Soul.wav` → "A Lost Soul", `02-night-drive.wav` → "Night drive").
+- **Cover:** the image named `cover.*`, or else the first image in the folder. With no image at all, the sleeve prints the record's name instead.
+- **Vinyl colour:** picked automatically from the cover art — its strongest colour, plus a second clearly different one if the cover has it, for a two-tone split pressing. To override, add `"colors": ["#2b7fd1", "#d2232e"]` (one colour is a solid pressing).
+- **Drafts:** `"draft": true` shows the record on localhost only. The files in its folder are still copied into the built site, so delete the folder before deploying if it shouldn't be public.
+
+Prefer `.mp3` for anything long — a `.wav` is roughly ten times the size.
+
 ## Build
 
 ```bash

@@ -1,0 +1,41 @@
+[
+  {
+    "slug": "not-the-epilogue",
+    "title": "Not the Epilogue, but a Transition to the Next Phase",
+    "summary": "A photobook.",
+    "cover": "/works/not-the-epilogue/cover.jpg",
+    "tags": ["Photobook", "Layout"],
+    "blocks": [
+      { "type": "image", "src": "/works/not-the-epilogue/spread-01.jpg", "alt": "Photobook spread", "aspectRatio": "1100 / 538" },
+      { "type": "image", "src": "/works/not-the-epilogue/spread-02.jpg", "alt": "Photobook spread", "aspectRatio": "2 / 1" },
+      { "type": "image", "src": "/works/not-the-epilogue/spread-03.jpg", "alt": "Photobook spread", "aspectRatio": "2 / 1" },
+      { "type": "image", "src": "/works/not-the-epilogue/spread-04.jpg", "alt": "Photobook spread", "aspectRatio": "2 / 1" },
+      { "type": "image", "src": "/works/not-the-epilogue/spread-05.jpg", "alt": "Photobook spread", "aspectRatio": "2 / 1" },
+      { "type": "image", "src": "/works/not-the-epilogue/spread-06.jpg", "alt": "Photobook spread", "aspectRatio": "2 / 1" },
+      { "type": "image", "src": "/works/not-the-epilogue/spread-07.jpg", "alt": "Photobook spread", "aspectRatio": "2 / 1" },
+      { "type": "image", "src": "/works/not-the-epilogue/spread-08.jpg", "alt": "Photobook spread", "aspectRatio": "2 / 1" },
+      { "type": "image", "src": "/works/not-the-epilogue/spread-09.jpg", "alt": "Photobook spread", "aspectRatio": "2 / 1" },
+      { "type": "image", "src": "/works/not-the-epilogue/spread-10.jpg", "alt": "Photobook spread", "aspectRatio": "2 / 1" },
+      { "type": "image", "src": "/works/not-the-epilogue/spread-11.jpg", "alt": "Photobook spread", "aspectRatio": "2 / 1" }
+    ]
+  },
+  {
+    "slug": "graphic-design",
+    "title": "Graphic Design",
+    "summary": "A collection of graphic design pieces.",
+    "cover": "/works/graphic-design/01.jpg",
+    "tags": ["Collection"],
+    "blocks": [
+      {
+        "type": "gallery",
+        "aspectRatio": "1 / 1",
+        "images": [
+          { "src": "/works/graphic-design/01.jpg", "alt": "Graphic design piece" },
+          { "src": "/works/graphic-design/03.jpg", "alt": "Graphic design piece" }
+        ]
+      },
+      { "type": "image", "src": "/works/graphic-design/02.jpg", "alt": "Graphic design piece", "aspectRatio": "1100 / 402" },
+      { "type": "image", "src": "/works/graphic-design/04.jpg", "alt": "Graphic design piece", "aspectRatio": "1100 / 366" }
+    ]
+  }
+]

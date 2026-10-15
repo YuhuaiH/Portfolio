@@ -5,6 +5,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import type { FilmRoll, Photo } from "@/lib/photos";
+import { useAutoplayDemo } from "@/lib/usePresentationMode";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
@@ -113,6 +114,10 @@ const CAMERA_OVERVIEW_LERP = 0.035;
 // (the old approach) only looked right at whatever camZ it was tuned
 // against, and drifted between the two very different zoom levels.
 const CAMERA_PITCH_RATIO = 0.16;
+// ?autoplay=1 only: how long a just-selected roll sits still, camera
+// settling into focus on it, before the strip starts pulling out — see the
+// note where this is used in SceneController.
+const AUTOPLAY_FOCUS_REST_MS = 1400;
 
 type RollState = {
   roll: FilmRoll;
@@ -755,6 +760,7 @@ function SceneController({
   const startPulledRef = useRef(0);
   const raycaster = useMemo(() => new THREE.Raycaster(), []);
   const focusedIndexRef = useRef(focusedIndex);
+  const autoplay = useAutoplayDemo();
 
   useEffect(() => {
     focusedIndexRef.current = focusedIndex;
@@ -765,11 +771,26 @@ function SceneController({
     // leaving hasInteractedRef false keeps the idle breathing animation
     // running on top of it as a "there's more — try pulling" nudge until
     // the viewer actually grabs it.
-    if (focusedIndex !== null) {
-      const rs = rollStates[focusedIndex];
-      rs.pulledRef.current = rs.minPulled + (rs.totalLength - rs.minPulled) * 0.5;
+    //
+    // The ?autoplay=1 recording flag skips that nudge and pulls the strip
+    // all the way out on its own instead — there's no hand on screen to do
+    // the pulling. But it doesn't start pulling the instant it's selected:
+    // that raced the camera's own glide into focus, so the reveal and the
+    // zoom were both happening at once and the whole beat read as rushed.
+    // Resting here first — camera settles into focus, strip stays put —
+    // gives the selection itself a moment to register before the pull
+    // starts.
+    if (focusedIndex === null) return;
+    const rs = rollStates[focusedIndex];
+    if (autoplay) {
+      const timer = setTimeout(() => {
+        rs.hasInteractedRef.current = true;
+        rs.pulledRef.current = rs.totalLength;
+      }, AUTOPLAY_FOCUS_REST_MS);
+      return () => clearTimeout(timer);
     }
-  }, [focusedIndex, rollStates]);
+    rs.pulledRef.current = rs.minPulled + (rs.totalLength - rs.minPulled) * 0.5;
+  }, [focusedIndex, rollStates, autoplay]);
 
   useEffect(() => {
     const dom = gl.domElement;

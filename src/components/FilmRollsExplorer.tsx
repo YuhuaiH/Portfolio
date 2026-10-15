@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import type { FilmRoll, Photo } from "@/lib/photos";
 import PhotoInfoModal from "./PhotoInfoModal";
 import { useFilmFocus } from "./FilmFocusProvider";
+import { useAutoplayGate } from "@/lib/usePresentationMode";
 
 const FilmScene = dynamic(() => import("./FilmScene"), {
   ssr: false,
@@ -14,6 +15,31 @@ const FilmScene = dynamic(() => import("./FilmScene"), {
 export default function FilmRollsExplorer({ filmRolls }: { filmRolls: FilmRoll[] }) {
   const { focusedIndex, setFocusedIndex } = useFilmFocus();
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
+  const { autoplay, started: autoplayStarted } = useAutoplayGate();
+
+  // ?autoplay=1 (see usePresentationMode.ts): picks up where EyeHero's own
+  // autoplay effect leaves off — it lands here already navigated from the
+  // eye, with the start keypress already spent (autoplayStarted reads true
+  // immediately via sessionStorage). Holds on the plain overview for a beat
+  // first (long enough for the just-arrived transition to settle and the
+  // row of canisters to actually register), then selects one roll to
+  // showcase. Selecting it is enough to start the reveal: FilmScene's
+  // SceneController already drives a selected roll to its fully-pulled-out
+  // length itself when autoplay is on, gliding there at the same slow,
+  // deliberate lerp rate a real drag would leave it easing toward — no
+  // separate "pull" step needed here. ?roll=N picks which one (0-based);
+  // defaults to the first.
+  useEffect(() => {
+    if (!autoplay || !autoplayStarted) return;
+    const OVERVIEW_HOLD_MS = 3200;
+    const requested = Number(new URLSearchParams(window.location.search).get("roll"));
+    const idx =
+      Number.isInteger(requested) && requested >= 0 && requested < filmRolls.length
+        ? requested
+        : 0;
+    const timer = setTimeout(() => setFocusedIndex(idx), OVERVIEW_HOLD_MS);
+    return () => clearTimeout(timer);
+  }, [autoplay, autoplayStarted, filmRolls.length, setFocusedIndex]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {

@@ -14,6 +14,8 @@
   --color-accent-bright: var(--accent-bright);
   --font-heading: var(--font-cormorant);
   --font-sans: var(--font-cardo);
+  --font-display: var(--font-unbounded);
+  --font-label: var(--font-space-grotesk);
 }
 
 body {
@@ -21,6 +23,32 @@ body {
   color: var(--foreground);
   font-family: var(--font-cardo), Georgia, serif;
   position: relative;
+}
+
+/* Some pages are taller than the viewport and some aren't, and on
+   Windows a classic scrollbar steals ~15px of width the moment it appears
+   — so every centered layout jumped sideways when navigating between a
+   short page and a long one. scrollbar-gutter: stable reserves that width
+   on every page whether it scrolls or not; both-edges reserves the same
+   amount on the left too, so "centered" stays dead center instead of
+   sitting half a gutter left. (Overlay scrollbars — macOS, phones — never
+   took width in the first place, and this is a no-op there.)
+
+   Thin and dim gold so the scrollbar itself reads as part of the scene
+   rather than a gray system widget bolted onto the edge. */
+html {
+  scrollbar-gutter: stable both-edges;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(217, 192, 138, 0.3) transparent;
+}
+
+/* With LAYERS.space on (layout.tsx), the base color behind everything
+   matches the space scene's own black. The gutters reserved above sit
+   outside the viewport the fixed 3D canvas covers, so they show this base
+   color — the theme's olive --background there read as two gray strips
+   framing the scene. */
+.space-bg body {
+  background: #040403;
 }
 
 /* A faint, restless film-grain overlay across every page, so surfaces read
@@ -101,8 +129,8 @@ body::after {
   pointer-events: none;
   background: radial-gradient(
     ellipse 55% 45% at 90% 6%,
-    rgba(219, 168, 63, 0.22) 0%,
-    rgba(219, 168, 63, 0) 60%
+    rgba(var(--accent-bright-rgb),0.22) 0%,
+    rgba(var(--accent-bright-rgb),0) 60%
   );
 }
 
@@ -139,7 +167,7 @@ body::after {
    so it only ever lightens (like haze catching light), never flattens the
    dark background underneath it. Color is the site's foreground (warm
    parchment) hand-converted to rgb() — CSS can't import theme.json, same
-   limitation as .light-leak above. A long (55s), gentle drift/scale keeps
+   source as .light-leak above. A long (55s), gentle drift/scale keeps
    it reading as slow atmosphere rather than an obvious loop; kept below
    the grain/vignette/light-leak/scratches so those finer marks still read
    on top of it rather than getting fogged over themselves. */
@@ -272,31 +300,365 @@ body::after {
   }
 }
 
-/* The logo's own grain (see SiteHeader.tsx) is mask-clipped to the
-   letterforms and exactly the size of the logo itself — unlike the
-   page-wide grain above, it can't be nudged via `transform` without
-   dragging the mask out of alignment with the shape it's clipped to.
-   Animating `background-position` instead moves only the noise texture
-   inside that fixed mask, so the speckle flickers across the letters
-   without the silhouette ever drifting off them. */
-@keyframes logo-grain-shift {
+/* The logo's gilt (SiteHeader.tsx): a band of light that sweeps across
+   the letters on hover — background-position only, inside a mask that
+   never moves, so the shine travels over the strokes while the shape
+   stays put. Parked off to the right (100%) at rest. */
+.logo-sheen {
+  background-position: 100% 0;
+  transition: background-position 0s;
+}
+
+.group:hover .logo-sheen {
+  background-position: -50% 0;
+  transition: background-position 1.4s ease-in-out;
+}
+
+/* The two little four-point glints beside the logo: a slow twinkle,
+   opacity + scale only (compositor-cheap, no repaint). */
+.logo-glint {
+  animation: logo-glint 4.8s ease-in-out infinite;
+}
+
+@keyframes logo-glint {
   0%,
   100% {
-    background-position: 0 0;
-  }
-  25% {
-    background-position: 18px -13px;
+    opacity: 0.25;
+    transform: scale(0.6) rotate(0deg);
   }
   50% {
-    background-position: -14px 16px;
-  }
-  75% {
-    background-position: 22px 9px;
+    opacity: 0.95;
+    transform: scale(1) rotate(15deg);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .logo-grain {
-    animation: none !important;
+  .logo-glint {
+    animation: none;
+    opacity: 0.7;
+  }
+  .group:hover .logo-sheen {
+    transition: none;
+  }
+}
+
+/* LAYERS.animate = false in layout.tsx puts .bg-paused on <html>: the
+   page-wide grain holds still instead of flickering. */
+.bg-paused body::before {
+  animation: none;
+}
+
+/* The home page's tickets popping out of the eye (EyeHero.tsx). Each slot
+   gets its own --ring-x/--ring-y (its landing spot, relative to the eye's
+   center) and --pop-delay (its place in the one-by-one order) inline.
+   Closed, every ticket is shrunk down and parked at the eye's center —
+   translate(-ring) undoes its own offset — so opening reads as each one
+   springing *out of* the eye; the cubic-bezier overshoots past 1 for a
+   small spring at the end. Below lg there's no ring: tickets stack in a
+   column under the eye and just drop in, still one at a time. */
+.eye-ticket {
+  display: flex;
+  justify-content: center;
+  transition:
+    transform 620ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 280ms ease-out;
+  transition-delay: var(--pop-delay, 0ms);
+}
+
+.eye-ticket[data-open="false"] {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-14px) scale(0.85);
+}
+
+@media (min-width: 1024px) {
+  .eye-ticket {
+    position: absolute;
+    left: calc(50% + var(--ring-x));
+    /* 40%, not 50%: the eye sits a little above the hero's middle (see
+       EyeHero.tsx) so the whole group — columns plus About beneath —
+       balances on screen; the slots are offsets from the eye. */
+    top: calc(40% + var(--ring-y));
+    width: auto;
+    transform: translate(-50%, -50%);
+  }
+
+  .eye-ticket[data-open="false"] {
+    transform: translate(-50%, -50%)
+      translate(calc(var(--ring-x) * -1), calc(var(--ring-y) * -1)) scale(0.15);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eye-ticket {
+    transition: opacity 200ms ease-out;
+  }
+}
+
+/* LAYERS.grain / LAYERS.vignette = false in layout.tsx. */
+.no-grain body::before,
+.no-vignette body::after {
+  display: none;
+}
+
+/* TV-signal glitch on the home tickets (EyeHero.tsx). Mostly still: each
+   cycle is ~96% idle, then a fraction-of-a-second burst — the content
+   jumps and shears, the title splits into offset red/cyan slices, and a
+   pale band tears across the card. steps(1) so every keyframe is a hard
+   cut, like a dropped frame, never a smooth tween. Each ticket sets its
+   own --glitch-dur / --glitch-delay so they fire out of sync. */
+.glitch-scanlines {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.09) 0 1px,
+    transparent 1px 3px
+  );
+  mix-blend-mode: multiply;
+}
+
+.glitch-body {
+  animation: glitch-jitter var(--glitch-dur, 7s) steps(1) var(--glitch-delay, 0s) infinite;
+}
+
+/* The hover burst runs on its own wrapper (see EyeHero.tsx) — the same
+   frames, compressed into one short play. */
+.group:hover .glitch-hover {
+  animation: glitch-jitter-once 0.42s steps(1) 1;
+}
+
+@keyframes glitch-jitter {
+  0%,
+  95.9%,
+  100% {
+    transform: none;
+  }
+  96% {
+    transform: translate(-3px, 0) skewX(-7deg);
+  }
+  96.6% {
+    transform: translate(4px, 1px);
+  }
+  97.2% {
+    transform: translate(-2px, -1px) skewX(5deg);
+  }
+  97.8% {
+    transform: translate(2px, 0);
+  }
+}
+
+@keyframes glitch-jitter-once {
+  0% {
+    transform: translate(-3px, 0) skewX(-7deg);
+  }
+  25% {
+    transform: translate(4px, 1px);
+  }
+  50% {
+    transform: translate(-2px, -1px) skewX(5deg);
+  }
+  75% {
+    transform: translate(2px, 0);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* The title's chromatic split: two copies of its own text (data-text),
+   red and cyan, each clipped to a different horizontal strip and knocked
+   sideways — only visible during a burst. */
+.glitch-text {
+  position: relative;
+}
+
+.glitch-text::before,
+.glitch-text::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.glitch-text::before {
+  color: #c2321f;
+  animation: glitch-slice-a var(--glitch-dur, 7s) steps(1) var(--glitch-delay, 0s) infinite;
+}
+
+.glitch-text::after {
+  color: #1f8a98;
+  animation: glitch-slice-b var(--glitch-dur, 7s) steps(1) var(--glitch-delay, 0s) infinite;
+}
+
+.group:hover .glitch-text::before {
+  animation: glitch-slice-a-once 0.42s steps(1) 1;
+}
+
+.group:hover .glitch-text::after {
+  animation: glitch-slice-b-once 0.42s steps(1) 1;
+}
+
+@keyframes glitch-slice-a {
+  0%,
+  95.9%,
+  98.4%,
+  100% {
+    opacity: 0;
+  }
+  96% {
+    opacity: 0.9;
+    transform: translate(-4px, 0);
+    clip-path: inset(8% 0 58% 0);
+  }
+  96.8% {
+    opacity: 0.9;
+    transform: translate(3px, 0);
+    clip-path: inset(62% 0 6% 0);
+  }
+  97.6% {
+    opacity: 0.9;
+    transform: translate(-2px, 0);
+    clip-path: inset(34% 0 38% 0);
+  }
+}
+
+@keyframes glitch-slice-b {
+  0%,
+  95.9%,
+  98.4%,
+  100% {
+    opacity: 0;
+  }
+  96% {
+    opacity: 0.85;
+    transform: translate(4px, 0);
+    clip-path: inset(55% 0 12% 0);
+  }
+  96.8% {
+    opacity: 0.85;
+    transform: translate(-3px, 0);
+    clip-path: inset(14% 0 66% 0);
+  }
+  97.6% {
+    opacity: 0.85;
+    transform: translate(2px, 0);
+    clip-path: inset(70% 0 4% 0);
+  }
+}
+
+@keyframes glitch-slice-a-once {
+  0% {
+    opacity: 0.9;
+    transform: translate(-4px, 0);
+    clip-path: inset(8% 0 58% 0);
+  }
+  33% {
+    opacity: 0.9;
+    transform: translate(3px, 0);
+    clip-path: inset(62% 0 6% 0);
+  }
+  66% {
+    opacity: 0.9;
+    transform: translate(-2px, 0);
+    clip-path: inset(34% 0 38% 0);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes glitch-slice-b-once {
+  0% {
+    opacity: 0.85;
+    transform: translate(4px, 0);
+    clip-path: inset(55% 0 12% 0);
+  }
+  33% {
+    opacity: 0.85;
+    transform: translate(-3px, 0);
+    clip-path: inset(14% 0 66% 0);
+  }
+  66% {
+    opacity: 0.85;
+    transform: translate(2px, 0);
+    clip-path: inset(70% 0 4% 0);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* The tear: a pale band (and a thin dark one under it) across the whole
+   card, jumping to a new height each frame of the burst. */
+.glitch-tear {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    180deg,
+    transparent 0 46%,
+    rgba(255, 244, 222, 0.55) 46% 52%,
+    rgba(0, 0, 0, 0.35) 52% 54%,
+    transparent 54% 100%
+  );
+  mix-blend-mode: overlay;
+  animation: glitch-tear var(--glitch-dur, 7s) steps(1) var(--glitch-delay, 0s) infinite;
+}
+
+@keyframes glitch-tear {
+  0%,
+  95.9%,
+  98.2%,
+  100% {
+    opacity: 0;
+  }
+  96% {
+    opacity: 1;
+    transform: translate(-6px, -28%);
+  }
+  96.7% {
+    opacity: 1;
+    transform: translate(5px, 22%);
+  }
+  97.4% {
+    opacity: 1;
+    transform: translate(-3px, -6%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glitch-body,
+  .glitch-tear,
+  .glitch-text::before,
+  .glitch-text::after,
+  .group:hover .glitch-hover,
+  .group:hover .glitch-text::before,
+  .group:hover .glitch-text::after {
+    animation: none;
+  }
+}
+
+/* A record turning on the platter (RecordShelf.tsx). Duration and
+   play-state are set inline — 33⅓ rpm, and paused the moment the music
+   is, so the disc stops where it is rather than snapping back to 0°. */
+.vinyl-spin {
+  animation: vinyl-spin 1.8s linear infinite;
+}
+
+@keyframes vinyl-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vinyl-spin {
+    animation: none;
   }
 }
