@@ -10,8 +10,8 @@ export const metadata: Metadata = {
 
 // Records come from public/audio/ (one folder per record — see
 // src/lib/records.ts), not a JSON list like Projects/Graphic.
-export default async function AudioPage() {
-  const records = await getRecords();
+export default function AudioPage() {
+  const records = getRecords();
   return (
     <section className="mx-auto w-full max-w-6xl px-6 pt-4 pb-12 font-label sm:px-12">
       <SectionHeader section="audio" count={records.length} noun={["record", "records"]} />

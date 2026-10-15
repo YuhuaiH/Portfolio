@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import { cache } from "react";
-import sharp from "sharp";
 
 // The Audio page's records, read from public/audio/ at build time — the
 // same folder-per-item convention as Photography's film rolls
@@ -22,7 +21,7 @@ import sharp from "sharp";
 //   - artist:            shown under the title (defaults to the site name).
 //   - description:       a line or two about it.
 //   - colors:            optional — the vinyl is colored from the cover art
-//                        automatically (see coverColors). Only set this to
+//                        automatically (scripts/generate-record-colors.mjs). Only set this to
 //                        override that, e.g. ["#2b7fd1", "#d2232e"] for a
 //                        two-tone split; one color is a solid pressing.
 //                        No cover and no colors gives black vinyl.
@@ -38,6 +37,19 @@ const META_FILE = "record.json";
 const AUDIO_EXTENSIONS = [".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac"];
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
 const SHOW_DRAFTS = process.env.NODE_ENV === "development";
+
+// Vinyl colors sampled from each cover by scripts/generate-record-colors.mjs
+// (run before dev/build), keyed by record folder. Read from disk rather than
+// imported so a missing file (script not run yet) just means black vinyl.
+const COLORS_FILE = path.join(process.cwd(), "src", "data", "record-colors.json");
+
+function sampledColors(): { [folder: string]: string[] } {
+  try {
+    return JSON.parse(fs.readFileSync(COLORS_FILE, "utf-8"));
+  } catch {
+    return {};
+  }
+}
 
 export type Track = { title: string; src: string };
 
@@ -67,89 +79,13 @@ function titleFromFilename(file: string) {
   return base ? base.charAt(0).toUpperCase() + base.slice(1) : file;
 }
 
-// The vinyl's pressing, picked from the cover art at build time. Pixels
-// are grouped by *hue* (15 slices of the color wheel), each weighted by
-// how saturated it is — so the colors a cover is actually *about* win, not
-// whatever covers the most area. (Grouping by raw RGB, the first version,
-// let a big black background beat Cavern GP's red and blue outright.)
-// Washed-out, near-black and near-white pixels sit the vote out.
-//
-// Returns the strongest hue plus the strongest one at least ~70° away on
-// the wheel, if it's a real presence (a fifth of the first's weight) —
-// a two-tone split like a colored pressing. Otherwise one solid color, and
-// a cover with almost no color at all gets its average neutral tone.
-const HUE_BINS = 15;
-
-async function coverColors(imagePath: string): Promise<string[]> {
-  const { data, info } = await sharp(imagePath)
-    .resize(64, 64, { fit: "inside" })
-    .removeAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-
-  const bins = Array.from({ length: HUE_BINS }, () => ({
-    w: 0,
-    r: 0,
-    g: 0,
-    b: 0,
-  }));
-  const neutral = { n: 0, r: 0, g: 0, b: 0 };
-  for (let i = 0; i < data.length; i += info.channels) {
-    const [r, g, b] = [data[i], data[i + 1], data[i + 2]];
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    const light = (max + min) / 510;
-    const sat = max ? (max - min) / max : 0;
-    if (sat < 0.3 || light < 0.1 || light > 0.9) {
-      neutral.n++;
-      neutral.r += r;
-      neutral.g += g;
-      neutral.b += b;
-      continue;
-    }
-    const d = max - min;
-    const sector =
-      max === r
-        ? ((g - b) / d) % 6
-        : max === g
-          ? (b - r) / d + 2
-          : (r - g) / d + 4;
-    const hue = (sector * 60 + 360) % 360;
-    const bin = bins[Math.floor(hue / (360 / HUE_BINS)) % HUE_BINS];
-    const w = sat * sat;
-    bin.w += w;
-    bin.r += r * w;
-    bin.g += g * w;
-    bin.b += b * w;
-  }
-
-  const hex = (c: { r: number; g: number; b: number }, k: number) =>
-    "#" +
-    [c.r / k, c.g / k, c.b / k]
-      .map((v) => Math.round(v).toString(16).padStart(2, "0"))
-      .join("");
-  const ranked = bins
-    .map((bin, i) => ({ ...bin, i }))
-    .sort((x, y) => y.w - x.w);
-  const top = ranked[0];
-  if (top.w < info.width * info.height * 0.02)
-    return neutral.n ? [hex(neutral, neutral.n)] : [];
-
-  const apart = (x: number, y: number) =>
-    Math.min(Math.abs(x - y), HUE_BINS - Math.abs(x - y));
-  const second = ranked.find(
-    (bin) => apart(bin.i, top.i) >= 3 && bin.w >= top.w * 0.2,
-  );
-  return second ? [hex(top, top.w), hex(second, second.w)] : [hex(top, top.w)];
-}
-
 // Public URL for a file in a record's folder — encoded, since folder and
 // file names are free-form and may contain spaces.
 function publicSrc(folder: string, file: string) {
   return `/audio/${encodeURIComponent(folder)}/${encodeURIComponent(file)}`;
 }
 
-async function readRecord(folder: string): Promise<Record> {
+function readRecord(folder: string): Record {
   const dir = path.join(AUDIO_DIR, folder);
   const label = `public/audio/${folder}/`;
   const jsonPath = path.join(dir, META_FILE);
@@ -195,9 +131,7 @@ async function readRecord(folder: string): Promise<Record> {
     time: raw.time,
     artist: raw.artist,
     description: raw.description,
-    colors:
-      raw.colors ??
-      (coverFile ? await coverColors(path.join(dir, coverFile)) : []),
+    colors: raw.colors ?? sampledColors()[folder] ?? [],
     cover: coverFile ? publicSrc(folder, coverFile) : undefined,
     tracks: audioFiles.map((file) => ({
       title: titleFromFilename(file),
@@ -209,14 +143,14 @@ async function readRecord(folder: string): Promise<Record> {
 
 // Every record, newest first by `time` (anything unparseable sorts last),
 // then by name.
-export const getRecords = cache(async (): Promise<Record[]> => {
+export const getRecords = cache((): Record[] => {
   if (!fs.existsSync(AUDIO_DIR)) return [];
   const folders = fs
     .readdirSync(AUDIO_DIR, { withFileTypes: true })
     .filter((entry) => entry.isDirectory());
-  const records = (
-    await Promise.all(folders.map((entry) => readRecord(entry.name)))
-  ).filter((record) => SHOW_DRAFTS || !record.draft);
+  const records = folders
+    .map((entry) => readRecord(entry.name))
+    .filter((record) => SHOW_DRAFTS || !record.draft);
 
   const when = (r: Record) =>
     Date.parse(r.time) || Date.parse(`1 January ${r.time}`) || 0;

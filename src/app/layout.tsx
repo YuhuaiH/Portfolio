@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Cardo, Cormorant_Garamond, Space_Grotesk, Unbounded } from "next/font/google";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
@@ -87,9 +87,45 @@ const spaceGrotesk = Space_Grotesk({
   weight: ["400", "500", "700"],
 });
 
+// What a shared link shows (Discord, iMessage, Slack, X…): the Open Graph
+// and Twitter-card tags below, plus the preview image generated at build
+// time by src/app/og.png/route.tsx. metadataBase is the deploy origin, so
+// the image path (which carries the /Portfolio basePath itself) resolves
+// to the absolute URL link-preview crawlers require. Every page inherits
+// these; pages only override their own <title>.
+const TITLE = `${site.fullName} — ${site.role}`;
+const OG_IMAGE = {
+  url: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/og.png`,
+  width: 1200,
+  height: 630,
+  alt: TITLE,
+};
+
 export const metadata: Metadata = {
-  title: `${site.name} — ${site.role}`,
-  description: `${site.role} portfolio of ${site.name}.`,
+  metadataBase: new URL(new URL(site.url).origin),
+  title: TITLE,
+  description: site.description,
+  openGraph: {
+    type: "website",
+    siteName: site.fullName,
+    title: TITLE,
+    description: site.description,
+    url: site.url,
+    locale: "en_US",
+    images: [OG_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: site.description,
+    images: [OG_IMAGE],
+  },
+};
+
+// The accent stripe down the side of a Discord embed (and the browser UI
+// tint on mobile) — the same pale gold as the space scene and the eye.
+export const viewport: Viewport = {
+  themeColor: "#d9c08a",
 };
 
 export default function RootLayout({

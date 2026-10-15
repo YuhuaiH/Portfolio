@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "node scripts/generate-photo-derivatives.mjs",
+    "predev": "node scripts/generate-photo-derivatives.mjs && node scripts/generate-record-colors.mjs",
     "dev": "next dev",
-    "prebuild": "node scripts/generate-photo-derivatives.mjs",
+    "prebuild": "node scripts/generate-photo-derivatives.mjs && node scripts/generate-record-colors.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
