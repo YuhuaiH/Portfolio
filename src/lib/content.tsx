@@ -11,7 +11,13 @@ import site from "@/data/site.json";
 export type ContentBlock =
   | { type: "heading"; text: string; level?: 1 | 2 | 3 }
   | { type: "paragraph"; text: string }
-  | { type: "image"; src: string; alt: string; caption?: string; aspectRatio?: string }
+  | {
+      type: "image";
+      src: string;
+      alt: string;
+      caption?: string;
+      aspectRatio?: string;
+    }
   | {
       type: "gallery";
       // An item whose src ends in .mp4 plays as a silent looping clip.
@@ -29,9 +35,36 @@ export type ContentBlock =
       loop?: boolean;
       // narrow: capped to phone width — for portrait/vertical footage.
       narrow?: boolean;
+      // poster: the frame shown before it plays (instead of the browser's
+      // black or first-frame placeholder). A filename in a work.json.
+      poster?: string;
     }
   | { type: "audio"; src: string; title?: string; caption?: string }
-  | { type: "embed"; src: string; title: string; aspectRatio?: string; height?: number }
+  | {
+      type: "embed";
+      src: string;
+      title: string;
+      aspectRatio?: string;
+      height?: number;
+    }
+  | {
+      // A flip-book of two-page spreads (FlipBook.tsx). In a work.json,
+      // leave out "pages" to use every image in the entry's folder except
+      // the cover, in filename order.
+      type: "book";
+      pages?: string[];
+      aspectRatio?: string; // default: the first spread's own shape
+    }
+  | {
+      // Every image in the entry's folder (except the cover) with a
+      // click-to-enlarge view (CollectionGrid.tsx) — just drop files in the
+      // folder. "images" is filled in by workEntries.ts. columns: 1 (the
+      // default) stacks them edge to edge as one continuous strip; 2 or 3
+      // lay them out as a masonry wall.
+      type: "collection";
+      columns?: 1 | 2 | 3;
+      images?: { src: string; alt: string; width: number; height: number }[];
+    }
   | { type: "spacer"; size?: "sm" | "md" | "lg" };
 
 const SITE_VARS: Record<string, string> = {
@@ -44,7 +77,10 @@ const SITE_VARS: Record<string, string> = {
 // site.json field, so content blocks don't have to hardcode (and risk
 // drifting from) values that already live there.
 export function interpolate(text: string) {
-  return text.replace(/\{\{(\w+)\}\}/g, (match, key) => SITE_VARS[key] ?? match);
+  return text.replace(
+    /\{\{(\w+)\}\}/g,
+    (match, key) => SITE_VARS[key] ?? match,
+  );
 }
 
 const LINK_PATTERN = /\[([^\]]+)\]\(([^)]+)\)/g;
@@ -70,10 +106,12 @@ export function renderInlineText(rawText: string) {
         key={key++}
         href={href}
         className="underline underline-offset-2 hover:text-foreground"
-        {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+        {...(isExternal
+          ? { target: "_blank", rel: "noopener noreferrer" }
+          : {})}
       >
         {label}
-      </a>
+      </a>,
     );
     lastIndex = match.index + match[0].length;
   }

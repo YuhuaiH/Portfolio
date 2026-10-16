@@ -2,6 +2,8 @@ import Image from "next/image";
 import type { ContentBlock } from "@/lib/content";
 import { renderInlineText } from "@/lib/content";
 import LoopVideo from "./LoopVideo";
+import FlipBook from "./FlipBook";
+import CollectionGrid from "./CollectionGrid";
 
 // next/image never applies basePath to a hardcoded src when
 // images.unoptimized is on (required for static export) — the
@@ -168,7 +170,14 @@ function Block({ block, variant }: { block: ContentBlock; variant: Variant }) {
             {block.loop ? (
               <LoopVideo src={src} className="block h-auto w-full" />
             ) : (
-              <video src={src} controls preload="metadata" playsInline className="block h-auto w-full" />
+              <video
+                src={src}
+                poster={block.poster ? `${BASE_PATH}${block.poster}` : undefined}
+                controls
+                preload="metadata"
+                playsInline
+                className="block h-auto w-full"
+              />
             )}
           </div>
           {block.caption && (
@@ -224,6 +233,22 @@ function Block({ block, variant }: { block: ContentBlock; variant: Variant }) {
             className="h-full w-full"
           />
         </div>
+      );
+
+    case "book":
+      return (
+        <FlipBook
+          pages={(block.pages ?? []).map((src) => `${BASE_PATH}${src}`)}
+          aspectRatio={block.aspectRatio ?? "2 / 1"}
+        />
+      );
+
+    case "collection":
+      return (
+        <CollectionGrid
+          columns={block.columns}
+          images={(block.images ?? []).map((image) => ({ ...image, src: `${BASE_PATH}${image.src}` }))}
+        />
       );
 
     case "spacer":

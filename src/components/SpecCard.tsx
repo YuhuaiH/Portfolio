@@ -28,6 +28,20 @@ export function toneFor(href: string): string {
   return TONES[key] ?? TONES.about;
 }
 
+// A spec-sheet catalogue number for an entry — section code plus its
+// position, "PRJ—02" — the label on an entry page's header card.
+const CATALOG_CODES: { [key in ToneKey]: string } = {
+  projects: "PRJ",
+  photography: "PHO",
+  audio: "AUD",
+  graphic: "GFX",
+  about: "ABT",
+};
+
+export function catalogNo(section: ToneKey, index: number) {
+  return `${CATALOG_CODES[section]}—${pad2(index)}`;
+}
+
 // Two-digit index, "01" style.
 export function pad2(n: number) {
   return String(n).padStart(2, "0");

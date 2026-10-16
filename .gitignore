@@ -45,3 +45,6 @@ next-env.d.ts
 
 # Lossless .wav masters for public/audio/ (the site serves .mp3 copies) — kept locally, too big for the repo
 /audio-masters/
+
+# Full-size originals of public/works media (the site serves compressed copies) — kept locally, too big for the repo
+/media-masters/

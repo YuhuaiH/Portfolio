@@ -1,0 +1,30 @@
+{
+  "title": "Graphic Design",
+  "order": 2,
+  "summary": "A collection of graphic design pieces.",
+  "tags": [
+    "Collection"
+  ],
+  "blocks": [
+    {
+      "type": "gallery",
+      "aspectRatio": "1 / 1",
+      "images": [
+        {
+          "src": "01.jpg",
+          "alt": "Graphic design piece"
+        },
+        {
+          "src": "03.jpg",
+          "alt": "Graphic design piece"
+        }
+      ]
+    },
+    {
+      "type": "image",
+      "src": "02.jpg",
+      "alt": "Graphic design piece",
+      "aspectRatio": "1100 / 402"
+    }
+  ]
+}

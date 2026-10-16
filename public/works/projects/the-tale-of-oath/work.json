@@ -1,0 +1,96 @@
+{
+  "title": "The Tale of Oath",
+  "order": 3,
+  "role": "Gameplay Programmer, VFX & Music",
+  "summary": "A third-person, magic-based action-adventure set in Rifts England — a level design vertical slice from CMU's Entertainment Technology Center, now on Steam.",
+  "tags": [
+    "Game",
+    "Level Design",
+    "ETC"
+  ],
+  "links": [
+    {
+      "label": "Steam",
+      "url": "https://store.steampowered.com/app/3900080/The_Tale_of_Oath/"
+    },
+    {
+      "label": "Itch",
+      "url": "https://cwj.itch.io/quessant"
+    },
+    {
+      "label": "Documentation",
+      "url": "https://docs.google.com/document/d/1LghiPeTN8Bva14sz1xjvyhQPLn83Leh4Is_4JOvyXB8/edit?usp=sharing"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "video",
+      "src": "gameplay.mp4",
+      "poster": "gameplay.jpg",
+      "caption": "Gameplay"
+    },
+    {
+      "type": "paragraph",
+      "text": "The Tale of Oath is a third-person action-adventure level design project from Carnegie Mellon University's Entertainment Technology Center, set in the Rifts Universe and bringing players into the mystical landscapes of Rifts England. The project centers on a magic-based adventure that emphasizes exploration, puzzle-solving, and world immersion."
+    },
+    {
+      "type": "paragraph",
+      "text": "The goal was to deliver a playable vertical slice that showcases the game's core mechanics — magic casting, environmental navigation, narrative worldbuilding, and Druid rescue — as a polished, self-contained experience. The game is now on [Steam](https://store.steampowered.com/app/3900080/The_Tale_of_Oath/)."
+    },
+    {
+      "type": "paragraph",
+      "text": "I was mainly responsible for gameplay programming, VFX, and music. My specific approach to each can be found in the [documentation](https://docs.google.com/document/d/1LghiPeTN8Bva14sz1xjvyhQPLn83Leh4Is_4JOvyXB8/edit?usp=sharing)."
+    },
+    {
+      "type": "heading",
+      "text": "Spell System Showcase",
+      "level": 2
+    },
+    {
+      "type": "gallery",
+      "aspectRatio": "16 / 9",
+      "images": [
+        {
+          "src": "spell-01.mp4",
+          "alt": "Spell effect"
+        },
+        {
+          "src": "spell-02.mp4",
+          "alt": "Spell effect"
+        },
+        {
+          "src": "spell-03.mp4",
+          "alt": "Spell effect"
+        },
+        {
+          "src": "spell-04.mp4",
+          "alt": "Spell effect"
+        },
+        {
+          "src": "spell-05.mp4",
+          "alt": "Spell effect"
+        },
+        {
+          "src": "spell-06.mp4",
+          "alt": "Spell effect"
+        },
+        {
+          "src": "spell-07.mp4",
+          "alt": "Spell effect"
+        },
+        {
+          "src": "spell-08.mp4",
+          "alt": "Spell effect"
+        },
+        {
+          "src": "spell-09.mp4",
+          "alt": "Spell effect"
+        },
+        {
+          "src": "spell-10.mp4",
+          "alt": "Spell effect"
+        }
+      ]
+    }
+  ]
+}

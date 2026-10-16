@@ -1,0 +1,51 @@
+{
+  "title": "Scotty3D",
+  "order": 6,
+  "role": "Programmer",
+  "summary": "A 3D modeling, rendering and animation package built for CMU's 15-362/662 Computer Graphics — rasterization, mesh editing, path tracing and animation.",
+  "tags": [
+    "Graphics",
+    "C++"
+  ],
+  "blocks": [
+    {
+      "type": "paragraph",
+      "text": "Scotty3D is a 3D modeling, rendering, and animation package that students complete as part of 15-362/662 Computer Graphics at Carnegie Mellon University. The features I implemented include rasterization, mesh editing, path tracing, and animation."
+    },
+    {
+      "type": "image",
+      "src": "ui.jpg",
+      "alt": "Scotty3D user interface",
+      "caption": "User interface",
+      "aspectRatio": "1100 / 653"
+    },
+    {
+      "type": "image",
+      "src": "rasterization.png",
+      "alt": "Scotty3D rasterization",
+      "caption": "Rasterization",
+      "aspectRatio": "1100 / 366"
+    },
+    {
+      "type": "image",
+      "src": "path-tracing.jpg",
+      "alt": "Scotty3D path tracing",
+      "caption": "Path tracing",
+      "aspectRatio": "1100 / 618"
+    },
+    {
+      "type": "image",
+      "src": "skeleton.jpg",
+      "alt": "Scotty3D skeleton",
+      "caption": "Skeleton",
+      "aspectRatio": "1100 / 586"
+    },
+    {
+      "type": "image",
+      "src": "animation.jpg",
+      "alt": "Still from the Scotty3D animation video",
+      "caption": "Animation",
+      "aspectRatio": "16 / 9"
+    }
+  ]
+}

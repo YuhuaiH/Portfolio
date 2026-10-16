@@ -1,0 +1,14 @@
+{
+  "title": "Not the Epilogue, but a Transition to the Next Phase",
+  "order": 1,
+  "summary": "A photobook.",
+  "tags": [
+    "Photobook",
+    "Layout"
+  ],
+  "blocks": [
+    {
+      "type": "book"
+    }
+  ]
+}

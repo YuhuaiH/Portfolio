@@ -1,0 +1,13 @@
+{
+  "title": "Collages",
+  "order": 3,
+  "summary": "A growing collection of collages.",
+  "tags": [
+    "Collage"
+  ],
+  "blocks": [
+    {
+      "type": "collection"
+    }
+  ]
+}

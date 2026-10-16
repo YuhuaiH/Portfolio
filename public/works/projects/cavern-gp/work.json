@@ -1,0 +1,101 @@
+{
+  "title": "Cavern GP",
+  "order": 2,
+  "year": "2025",
+  "role": "Programmer, Game Designer, Artist & Sound Designer",
+  "summary": "A massive local multiplayer racing game for the Cavern — a 270° curved projection screen at CMU's Entertainment Technology Center — where the crowd cheers drivers into overtakes, crashes and fast corners.",
+  "tags": [
+    "Game",
+    "Unity",
+    "ETC"
+  ],
+  "links": [
+    {
+      "label": "Project Website",
+      "url": "https://projects.etc.cmu.edu/270-degree-fun/"
+    },
+    {
+      "label": "Documentation",
+      "url": "https://docs.google.com/document/d/1fZHUSGTnWkFYrxo2k6uY9g8hPcA-_BCsDHzC8WvrAdU/edit?usp=sharing"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "video",
+      "src": "trailer.mp4",
+      "poster": "trailer-poster.jpg",
+      "caption": "Trailer"
+    },
+    {
+      "type": "paragraph",
+      "text": "Team 270° Fun developed a massive local multiplayer racing game focused on building community through sports. Designed for the Cavern system at the Entertainment Technology Center (ETC), the project utilizes the Cavern, a 270° curved projection screen and a 20-foot-wide interactive play area, enabling dynamic local multiplayer interactions within virtual environments."
+    },
+    {
+      "type": "paragraph",
+      "text": "The project's goal is to find a balance between having player agency and still feeling like part of the audience. Players work together as cheerleaders and fans, cheering for their favorite teams, affecting the drivers' behavior and causing overtakes, crashes, and fast cornering. This teamwork evokes a sense of belonging, deepening players' relationship with others supporting the same team."
+    },
+    {
+      "type": "paragraph",
+      "text": "The game was played at the ETC 2025 Fall Festival and received massive positive reviews. It also broke the record for the largest number of players in the Cavern — from 6 to 26."
+    },
+    {
+      "type": "paragraph",
+      "text": "I was mainly responsible for programming, game design, UI/UX, and sound design. My specific approach to each of those features can be found in the [documentation](https://docs.google.com/document/d/1fZHUSGTnWkFYrxo2k6uY9g8hPcA-_BCsDHzC8WvrAdU/edit?usp=sharing)."
+    },
+    {
+      "type": "video",
+      "src": "onboarding.mp4",
+      "poster": "onboarding-poster.jpg",
+      "caption": "Onboarding storyboard — used as a tutorial for festival guests"
+    },
+    {
+      "type": "heading",
+      "text": "Highlights",
+      "level": 2
+    },
+    {
+      "type": "heading",
+      "text": "Waypoint System",
+      "level": 3
+    },
+    {
+      "type": "paragraph",
+      "text": "The waypoint system guides cars along track paths with player-influenced speed, while lane switching enables overtakes, crashes and drifting. Designers can adjust it right inside the Unity Editor, which helped us build out the pipeline."
+    },
+    {
+      "type": "list",
+      "items": [
+        "Easy for iteration and customization",
+        "Great physics simulation"
+      ]
+    },
+    {
+      "type": "video",
+      "src": "waypoints.mp4",
+      "loop": true
+    },
+    {
+      "type": "heading",
+      "text": "Mobile Controller",
+      "level": 3
+    },
+    {
+      "type": "paragraph",
+      "text": "The mobile controller system lets players use their phones as real-time input devices to control the in-game vehicles. It connects Unity with external devices through a Node.js server, using HTML and JavaScript interfaces for seamless interaction — enabling multiplayer gameplay without additional hardware, and an easily customizable input layer for future projects."
+    },
+    {
+      "type": "list",
+      "items": [
+        "Real-time synchronization between mobile browsers and Unity",
+        "Flexible, web-based input interface for rapid testing and iteration",
+        "Fully local, low-latency communication via Node.js server"
+      ]
+    },
+    {
+      "type": "video",
+      "src": "mobile-controller.mp4",
+      "loop": true,
+      "narrow": true
+    }
+  ]
+}

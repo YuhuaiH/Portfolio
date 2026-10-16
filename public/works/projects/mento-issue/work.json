@@ -1,0 +1,58 @@
+{
+  "title": "Mento Issue",
+  "order": 4,
+  "year": "2025",
+  "role": "Game Designer, Programmer, Artist & Sound Designer",
+  "summary": "A Global Game Jam 2025 game on the theme \"Bubble\", built around the reaction between Mentos and soda — winner of the Non-Traditional Award at GGJ Pittsburgh.",
+  "tags": [
+    "Game",
+    "Game Jam"
+  ],
+  "links": [
+    {
+      "label": "Itch",
+      "url": "https://yenchun.itch.io/mento-issue"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "paragraph",
+      "text": "Yen-Chun Huang, Jack Peng, Alex Hall, and I attended the Global Game Jam Pittsburgh. The theme of the jam was \"bubbles,\" which inspired us to create a game based on the reaction between Mentos and soda. Our concept was well received by the audience, earning us the Non-Traditional Award at the event."
+    },
+    {
+      "type": "paragraph",
+      "text": "Players control half a pack of Mentiez (a Mentos-like candy) with the ability to throw mints. The goal is to reunite with the other half of the pack — but the only way to navigate the map is by using Mentos to trigger special bubble effects from sodas."
+    },
+    {
+      "type": "paragraph",
+      "text": "The first version of the game is available on both [itch.io](https://yenchun.itch.io/mento-issue) and the GGJ website. Feel free to check it out and enjoy a piece of Mentiez!"
+    },
+    {
+      "type": "image",
+      "src": "poster.jpg",
+      "alt": "Mento Issue key art",
+      "aspectRatio": "1 / 1"
+    },
+    {
+      "type": "image",
+      "src": "gameplay.jpg",
+      "alt": "Still from the Mento Issue gameplay showcase",
+      "caption": "From the gameplay showcase",
+      "aspectRatio": "16 / 10"
+    },
+    {
+      "type": "gallery",
+      "aspectRatio": "16 / 9",
+      "images": [
+        {
+          "src": "01.jpg",
+          "alt": "Mento Issue screenshot"
+        },
+        {
+          "src": "02.jpg",
+          "alt": "Mento Issue screenshot"
+        }
+      ]
+    }
+  ]
+}

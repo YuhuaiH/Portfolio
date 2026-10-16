@@ -21,7 +21,7 @@ import { cache } from "react";
 //   - artist:            shown under the title (defaults to the site name).
 //   - description:       a line or two about it.
 //   - colors:            optional — the vinyl is colored from the cover art
-//                        automatically (scripts/generate-record-colors.mjs). Only set this to
+//                        automatically (scripts/generate-cover-colors.mjs). Only set this to
 //                        override that, e.g. ["#2b7fd1", "#d2232e"] for a
 //                        two-tone split; one color is a solid pressing.
 //                        No cover and no colors gives black vinyl.
@@ -38,7 +38,7 @@ const AUDIO_EXTENSIONS = [".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac"];
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
 const SHOW_DRAFTS = process.env.NODE_ENV === "development";
 
-// Vinyl colors sampled from each cover by scripts/generate-record-colors.mjs
+// Vinyl colors sampled from each cover by scripts/generate-cover-colors.mjs
 // (run before dev/build), keyed by record folder. Read from disk rather than
 // imported so a missing file (script not run yet) just means black vinyl.
 const COLORS_FILE = path.join(process.cwd(), "src", "data", "record-colors.json");
@@ -71,8 +71,8 @@ export type Record = {
 // a dash is real punctuation ("Epilogue - Future Past") and stays.
 function titleFromFilename(file: string) {
   let base = file
-    .replace(/.[^.]+$/, "")
-    .replace(/^d+[s._-]*/, "")
+    .replace(/\.[^.]+$/, "")
+    .replace(/^\d+[\s._-]*/, "")
     .replace(/_+/g, " ")
     .trim();
   if (!base.includes(" ")) base = base.replace(/-+/g, " ");

@@ -1,9 +1,10 @@
 import ContentBlocks from "./ContentBlocks";
 import PendingLink from "./PendingLink";
-import { EntryCover, entryStamp } from "./WorkIndex";
+import { entryStamp } from "./WorkIndex";
 import {
   Barcode,
   CornerArrow,
+  catalogNo,
   Grain,
   INK,
   pad2,
@@ -13,14 +14,21 @@ import {
   TONES,
 } from "./SpecCard";
 import type { EntrySectionKey, WorkEntry } from "@/lib/works";
-import { getEntries, getSection } from "@/lib/works";
+import { getSection } from "@/lib/works";
+import { getEntries } from "@/lib/workEntries";
 
 // One entry's own page. Up top, a big spec card in the section's color
 // (see SpecCard.tsx): title and summary on the left, a ruled spec table
 // (year, role, tags) and the outbound links on the right, a code + barcode
-// footer. Below it, the cover and the write-up on the dark page, in the
-// content blocks' "spec" look — left-aligned, since a write-up runs long
-// and centered body text gets hard to read past a few lines.
+// footer. Below it, the write-up on the dark page, in the content blocks'
+// "spec" look — left-aligned, since a write-up runs long and centered body
+// text gets hard to read past a few lines.
+//
+// No cover image here: the cover fronts the entry's card on the section
+// page, and on its own page it only stood between the visitor and the
+// actual work. Instead, an entry whose first block is a video (a trailer,
+// a gameplay capture) gets that video straight under the header at full
+// page width — the first thing you see, where the cover used to be.
 export default function WorkDetail({
   section,
   entry,
@@ -29,12 +37,22 @@ export default function WorkDetail({
   entry: WorkEntry;
 }) {
   const { label, href } = getSection(section);
-  const tone = TONES[section];
+  // The entry's own card color (sampled from its cover), else the section's.
+  const tone = entry.color ?? TONES[section];
   const index = getEntries(section).findIndex((e) => e.slug === entry.slug) + 1;
   const stamp = entryStamp(entry);
+  // An entry whose page *is* the work — a flip-book or a collection wall —
+  // gets the full page width: the work is the point, not a column of text.
+  const showcase =
+    entry.blocks?.some((b) => b.type === "book" || b.type === "collection") ?? false;
+  const blocks = entry.blocks ?? [];
+  const lead = blocks[0]?.type === "video" ? blocks[0] : null;
+  const body = lead ? blocks.slice(1) : blocks;
 
   return (
-    <article className="mx-auto w-full max-w-5xl px-6 pt-4 pb-16 font-label sm:px-12">
+    <article
+      className={`mx-auto w-full ${showcase ? "max-w-6xl" : "max-w-5xl"} px-6 pt-4 pb-16 font-label sm:px-12`}
+    >
       <PendingLink
         href={href}
         className="text-[11px] font-medium tracking-[0.16em] text-muted uppercase hover:text-foreground"
@@ -104,7 +122,7 @@ export default function WorkDetail({
 
         <div className="relative mt-8 flex items-center justify-between gap-4 border-t-[1.5px] border-current pt-3">
           <span className="truncate font-display text-sm font-black uppercase">
-            #{entry.slug.replace(/-/g, "").slice(0, 8)}
+            {catalogNo(section, Math.max(index, 1))}
           </span>
           <div className="flex items-center gap-4">
             <Barcode value={entry.slug} className="hidden h-4 w-20 sm:block" />
@@ -113,18 +131,15 @@ export default function WorkDetail({
         </div>
       </header>
 
-      {entry.cover && (
-        <EntryCover
-          entry={entry}
-          index={index}
-          sizes="(min-width: 1024px) 960px, 100vw"
-          className="mt-6 aspect-[16/9] w-full rounded-[28px] border-0 text-foreground"
-        />
+      {lead && (
+        <div className="mt-6">
+          <ContentBlocks blocks={[lead]} variant="spec" />
+        </div>
       )}
 
-      {entry.blocks && entry.blocks.length > 0 && (
-        <div className="mx-auto mt-14 max-w-3xl text-left">
-          <ContentBlocks blocks={entry.blocks} variant="spec" />
+      {body.length > 0 && (
+        <div className={`mx-auto text-left ${showcase ? "mt-8" : "mt-14 max-w-3xl"}`}>
+          <ContentBlocks blocks={body} variant="spec" />
         </div>
       )}
     </article>

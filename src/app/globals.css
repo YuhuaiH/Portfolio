@@ -662,3 +662,40 @@ body::after {
     animation: none;
   }
 }
+
+/* A turning page in the photobook (FlipBook.tsx). The ease is slow-fast-
+   slow like a page lifted, swung over and laid down; each face hides when
+   turned away so the leaf shows its front on the right and its back on the
+   left. The shade spans darken each page toward the spine — the curve of a
+   bound page — and deepen while a leaf is mid-turn. */
+.book-leaf {
+  transition-property: transform;
+  transition-timing-function: cubic-bezier(0.45, 0.05, 0.25, 1);
+}
+
+.book-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  background-color: #000;
+}
+
+.book-shade-right,
+.book-shade-left {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.book-shade-right {
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.28), transparent 14%, transparent 92%, rgba(0, 0, 0, 0.08));
+}
+
+.book-shade-left {
+  background: linear-gradient(270deg, rgba(0, 0, 0, 0.28), transparent 14%, transparent 92%, rgba(0, 0, 0, 0.08));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .book-leaf {
+    transition-duration: 0ms !important;
+  }
+}

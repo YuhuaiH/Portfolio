@@ -130,7 +130,7 @@ export default function WorkIndex({
               <PendingLink
                 href={`${href}/${entry.slug}`}
                 className="group relative flex h-full flex-col rounded-[26px] p-4 shadow-[0_18px_40px_-18px_rgba(0,0,0,0.9)] transition-transform duration-300 ease-out hover:-translate-y-1"
-                style={{ backgroundColor: tone, color: INK }}
+                style={{ backgroundColor: entry.color ?? tone, color: INK }}
               >
                 <Grain />
                 <Scanlines />
@@ -167,8 +167,9 @@ export default function WorkIndex({
                   )}
                 </div>
                 <div className="relative mt-auto flex items-center justify-between gap-3 border-t-[1.5px] border-current pt-3">
-                  <span className="truncate font-display text-xs font-black uppercase">
-                    #{entry.slug.replace(/-/g, "").slice(0, 8)}
+                  {/* The card is a link, so its footer says where it goes. */}
+                  <span className="truncate text-[11px] font-bold tracking-[0.14em] uppercase">
+                    {section === "graphic" ? "View work" : "View project"}
                   </span>
                   <Barcode value={entry.slug} className="h-4 w-14 shrink-0" />
                   <CornerArrow className="h-6 w-6 shrink-0 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />

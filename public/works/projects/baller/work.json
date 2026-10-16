@@ -1,0 +1,36 @@
+{
+  "title": "Baller",
+  "order": 7,
+  "year": "2023",
+  "role": "UI & Music",
+  "summary": "A class project built around a game of catch between two people — every time the ball is caught, a small part of the gameplay changes.",
+  "tags": [
+    "Game"
+  ],
+  "links": [
+    {
+      "label": "Itch",
+      "url": "https://megapig9001.itch.io/baller"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "paragraph",
+      "text": "Baller is a class project based around the idea of playing a game of catch with two people. Each time the ball is caught, a small part of the gameplay changes. The concept was designed to keep the scope low, and to be easily expandable."
+    },
+    {
+      "type": "gallery",
+      "aspectRatio": "16 / 9",
+      "images": [
+        {
+          "src": "02.jpg",
+          "alt": "Baller screenshot"
+        },
+        {
+          "src": "03.png",
+          "alt": "Baller screenshot"
+        }
+      ]
+    }
+  ]
+}

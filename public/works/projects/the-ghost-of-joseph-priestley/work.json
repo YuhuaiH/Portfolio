@@ -1,0 +1,62 @@
+{
+  "title": "The Ghost of Joseph Priestley",
+  "order": 1,
+  "year": "2026",
+  "role": "Programmer & Sound Designer",
+  "summary": "An AI-powered interactive installation where visitors converse with the ghost of 18th-century scientist Joseph Priestley through a diary-based interface.",
+  "tags": [
+    "Installation",
+    "AI",
+    "ETC"
+  ],
+  "links": [
+    {
+      "label": "Project Website",
+      "url": "https://projects.etc.cmu.edu/ghaist/"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "video",
+      "src": "trailer.mp4",
+      "poster": "trailer-poster.jpg",
+      "caption": "Trailer"
+    },
+    {
+      "type": "paragraph",
+      "text": "An AI-powered interactive experience bringing 18th-century scientist Joseph Priestley to life. Joseph Priestley discovered oxygen, invented carbonated water, and befriended Benjamin Franklin before fleeing England for revolutionary America. Yet most people have never heard of him."
+    },
+    {
+      "type": "paragraph",
+      "text": "This project creates an entertaining, portable installation where visitors converse with Priestley's \"ghost\" through a diary-based interface. Using LLM technology, the experience is designed for the Priestley-Forsyth Memorial Library in Northumberland, PA, and travels to schools and conferences, sparking curiosity about Priestley as a person."
+    },
+    {
+      "type": "gallery",
+      "aspectRatio": "3 / 2",
+      "images": [
+        {
+          "src": "01.jpg",
+          "alt": "The Ghost of Joseph Priestley installation"
+        },
+        {
+          "src": "02.jpg",
+          "alt": "The Ghost of Joseph Priestley installation"
+        },
+        {
+          "src": "03.jpg",
+          "alt": "The Ghost of Joseph Priestley installation"
+        },
+        {
+          "src": "04.jpg",
+          "alt": "The Ghost of Joseph Priestley installation"
+        }
+      ]
+    },
+    {
+      "type": "image",
+      "src": "05.jpg",
+      "alt": "The Ghost of Joseph Priestley installation",
+      "aspectRatio": "3 / 2"
+    }
+  ]
+}
