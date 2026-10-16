@@ -699,3 +699,26 @@ body::after {
     transition-duration: 0ms !important;
   }
 }
+
+/* The rose candle-light haze under the home page eye (EyeHero.tsx) —
+   breathing on the same ~6s cycle as EyeStage's CandleLight, so the glow
+   in the air and the light on the eye swell together. */
+.candle-spill {
+  animation: candle-breath 6.2s ease-in-out infinite;
+}
+
+@keyframes candle-breath {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .candle-spill {
+    animation: none;
+  }
+}

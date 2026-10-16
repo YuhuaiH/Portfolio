@@ -389,6 +389,21 @@ export default function EyeHero({ tickets }: { tickets: Ticket[] }) {
             onReady={() => setEyeReady(true)}
           />
         </div>
+        {/* Candle spill: the rose light from EyeStage's CandleLight (low and
+            in front of the eye) catching the air below it — a soft haze
+            *over* the canvas, screen-blended so it only ever lightens, and
+            breathing on the same slow ~6s rhythm as the light itself. A
+            sibling of the canvas wrapper, never its ancestor (see above). */}
+        <div
+          aria-hidden
+          className={`candle-spill pointer-events-none absolute -inset-x-16 top-[42%] -bottom-24 mix-blend-screen blur-2xl transition-opacity duration-700 ${
+            entered ? "" : "opacity-0"
+          }`}
+          style={{
+            background:
+              "radial-gradient(ellipse 50% 45% at 52% 62%, rgba(255,170,150,0.16), rgba(255,140,130,0.05) 55%, transparent 75%)",
+          }}
+        />
         {/* The eye itself is the button — a round hit area laid over the
             canvas rather than a click handler on the 3D mesh, so it's a
             real focusable, keyboard-operable control. */}

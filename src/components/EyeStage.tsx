@@ -202,7 +202,17 @@ function Eyeball({ pupilRef }: { pupilRef: React.RefObject<THREE.Mesh | null> })
       "#ddd2bf",
       1.7
     );
-    irisDiffuse.colorSpace = THREE.SRGBColorSpace;
+    // The iris texture fades to pure black at its rim and corners (the
+    // outer ~8% of its radius and beyond is 98-100% black). Multiplied by a
+    // tint, black stays black — which is what wrapped the iris in a thick,
+    // dead-black ring. Remapped like the sclera instead: its darks become a
+    // deep warm brown (a real limbal ring, which still catches light), its
+    // lights the accent tint the multiply used to give.
+    const irisColorMap = recolorGrayscale(
+      irisDiffuse.image as TexImageSource | undefined,
+      "#2a1f13",
+      THEME.accentBright
+    );
 
     const lights: THREE.Object3D[] = [];
     root.traverse((child) => {
@@ -222,13 +232,12 @@ function Eyeball({ pupilRef }: { pupilRef: React.RefObject<THREE.Mesh | null> })
         });
       } else if (mesh.name === "Iris") {
         mesh.material = new THREE.MeshStandardMaterial({
-          map: irisDiffuse,
+          map: irisColorMap ?? irisDiffuse,
           bumpMap: irisBump,
           bumpScale: 0.01,
-          // Matches the site's accent red (src/data/theme.json), multiplied
-          // over the grayscale fiber texture so the brighter fibers read as
-          // a vivid crimson against a near-black core.
-          color: THEME.accentBright,
+          // The tint is baked into irisColorMap; only the raw-texture
+          // fallback still needs it multiplied in here.
+          color: irisColorMap ? "#ffffff" : THEME.accentBright,
           roughness: 0.35,
         });
         // mesh.position is in the FBX's own raw coordinate space (this
@@ -276,7 +285,10 @@ function Eyeball({ pupilRef }: { pupilRef: React.RefObject<THREE.Mesh | null> })
           uncovered (showing as a bright crescent) once rotated off-center. */}
       <mesh ref={pupilRef} position={[0, 0, -1.01]}>
         <circleGeometry args={[0.165, 48]} />
-        <meshStandardMaterial color="#050505" roughness={0.25} side={THREE.DoubleSide} />
+        {/* Very dark warm brown, not pure black, and glossy: a real pupil
+            is wet, so it should pick up the candle light's sheen rather
+            than read as a hole punched through the eye. */}
+        <meshStandardMaterial color="#140d0a" roughness={0.12} side={THREE.DoubleSide} />
       </mesh>
       {/* Fixed specular glint, offset up-left on the pupil like a real
           "catch light" — additive blending so it brightens rather than
@@ -416,6 +428,49 @@ function EyeRig({
   );
 }
 
+// The light in front of the eye — "tender and creepy". Tender: a warm,
+// rose-tinted candle glow with a wide, soft falloff, not a hard spot.
+// Creepy: it sits low and in front, shining up at the eye (the flashlight-
+// under-the-chin angle), and it never holds still — a slow breath every
+// ~6s with a faint, irregular candle waver on top, so the eye reads as lit
+// by something you can't see rather than by a studio light.
+//
+// The camera is on -Z looking toward +Z (see EyeStage), so "in front" is
+// negative z. Physically based units: at ~2.3 from the eye, intensity ~4.5
+// lands near the strength of the existing key light.
+const CANDLE_BASE = 4.5;
+
+function CandleLight() {
+  const lightRef = useRef<THREE.PointLight>(null);
+  const still = useMemo(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    []
+  );
+
+  useFrame(({ clock }) => {
+    const light = lightRef.current;
+    if (!light || still) return;
+    const t = clock.elapsedTime;
+    const breath = 0.5 + 0.5 * Math.sin((t * Math.PI * 2) / 6.2); // 0..1, slow
+    // Three incommensurate sines: an uneven waver that never visibly loops.
+    const waver = Math.sin(t * 7.3) * 0.5 + Math.sin(t * 11.9 + 1.3) * 0.3 + Math.sin(t * 3.1 + 0.7) * 0.2;
+    light.intensity = CANDLE_BASE * (0.78 + 0.32 * breath + 0.05 * waver);
+  });
+
+  return (
+    <pointLight
+      ref={lightRef}
+      position={[0.25, -1.1, -2.1]}
+      color="#ffb59e"
+      intensity={CANDLE_BASE}
+      distance={7}
+      decay={2}
+    />
+  );
+}
+
 // A single large eyeball, built from the real-world eye asset in
 // public/models/eye, that rotates to stare at the cursor anywhere on the
 // page. `reaction`, set by a parent that knows about clicks elsewhere on
@@ -456,10 +511,14 @@ export default function EyeStage({
             in the same gold;
           - a soft, slightly warm key from the upper left for form;
           - the same dim cool fill the background uses for its shadows;
-          - a small point light kept only for the wet catchlight. */}
-      <ambientLight intensity={0.14} />
+          - a small point light kept only for the wet catchlight;
+          - CandleLight: the breathing rose glow from low in front (see
+            above), plus a little more ambient and key than before, which
+            left the eye's face too dark. */}
+      <ambientLight intensity={0.22} />
       <directionalLight position={[0.4, -1.6, 3.5]} intensity={2.2} color="#d6b27a" />
-      <directionalLight position={[-2, 3, -4]} intensity={0.7} color="#efe4cf" />
+      <directionalLight position={[-2, 3, -4]} intensity={0.85} color="#efe4cf" />
+      <CandleLight />
       <directionalLight position={[2.5, 2, -1]} intensity={0.18} color="#7f8794" />
       <pointLight position={[-0.6, 0.8, -2.4]} intensity={0.45} distance={6} />
       <Suspense fallback={null}>
