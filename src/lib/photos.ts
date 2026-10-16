@@ -14,14 +14,16 @@ export type PhotoType = "film" | "digital";
 
 export type Photo = {
   id: string;
-  // Full-resolution original — only for a dedicated high-quality view or
-  // download, never for on-screen thumbnails/previews (those cost far more
-  // bandwidth than the display size warrants). See thumbSrc/previewSrc.
+  // The photo file itself — already web-sized by compress-photos.mjs, but
+  // never shown directly: it's only the source the derivatives below are
+  // made from (and their fallback if one hasn't been generated yet).
   src: string;
   // Downscaled derivative for small on-screen uses (film-strip frames).
   thumbSrc: string;
-  // Downscaled derivative for larger on-screen uses (the detail modal, the
-  // digital scene's billboard) that still don't need full resolution.
+  // Mid-size derivative for the Digital compilation grid.
+  gridSrc: string;
+  // The largest view anyone gets: 2000px, for the film detail popup and
+  // the Digital compilation's full-screen viewer.
   previewSrc: string;
   width: number;
   height: number;
@@ -38,10 +40,10 @@ export type Photo = {
 // Derivatives are generated ahead of time by
 // scripts/generate-photo-derivatives.mjs (run via predev/prebuild) into
 // public/photos-cache/<variant>/<relative path under public/photos>.webp.
-// Falls back to the full-resolution src if a derivative hasn't been
+// Falls back to the photo file itself (src) if a derivative hasn't been
 // generated yet, so the site still works (just heavier) if that script
 // hasn't run.
-function derivativeSrc(relPath: string, variant: "thumb" | "preview", fallbackSrc: string) {
+function derivativeSrc(relPath: string, variant: "thumb" | "grid" | "preview", fallbackSrc: string) {
   const relWebp = relPath.replace(/\.[^./\\]+$/, ".webp");
   const absPath = path.join(DERIVATIVES_DIR, variant, relWebp);
   if (!fs.existsSync(absPath)) return fallbackSrc;
@@ -65,11 +67,27 @@ function readImageSize(imagePath: string, label: string) {
     : { width, height };
 }
 
+// The date written into a photo's EXIF (the first "YYYY:MM:DD HH:MM:SS" in
+// the file's header), as an ISO string — or null if it has none. Checked
+// before falling back to the file's modified time, because that time isn't
+// reliable: git doesn't keep it, so a deployed copy would show the checkout
+// date. (The resized digital photos carry their original's date here.)
+function exifDate(imagePath: string): string | null {
+  const fd = fs.openSync(imagePath, "r");
+  const head = Buffer.alloc(65536);
+  const read = fs.readSync(fd, head, 0, head.length, 0);
+  fs.closeSync(fd);
+  const m = head.subarray(0, read).toString("latin1").match(/(\d{4}):(\d{2}):(\d{2}) (\d{2}:\d{2}:\d{2})/);
+  if (!m) return null;
+  const iso = `${m[1]}-${m[2]}-${m[3]}T${m[4]}`;
+  return Number.isNaN(Date.parse(iso)) ? null : iso;
+}
+
 // Every image directly in public/photos/digital/ is a digital photo — no
 // roll to group it under. A "<id>.json" sidecar is optional and only
 // needs whichever of "name"/"time" you want to override; without one (or
 // with fields left out), the name comes from the filename and the date
-// falls back to the image file's own last-modified time.
+// from the image's EXIF date, else its own last-modified time.
 function readDigitalPhoto(dir: string, imageFile: string, siblingEntries: string[]): Photo {
   const id = imageFile.replace(/\.[^./\\]+$/, "");
   const jsonFile = `${id}.json`;
@@ -96,7 +114,7 @@ function readDigitalPhoto(dir: string, imageFile: string, siblingEntries: string
     }
   }
 
-  time ??= fs.statSync(imagePath).mtime.toISOString();
+  time ??= exifDate(imagePath) ?? fs.statSync(imagePath).mtime.toISOString();
 
   const { width, height } = readImageSize(imagePath, `public/photos/digital/${imageFile}`);
 
@@ -107,6 +125,7 @@ function readDigitalPhoto(dir: string, imageFile: string, siblingEntries: string
     id,
     src,
     thumbSrc: derivativeSrc(relPath, "thumb", src),
+    gridSrc: derivativeSrc(relPath, "grid", src),
     previewSrc: derivativeSrc(relPath, "preview", src),
     width,
     height,
@@ -160,6 +179,7 @@ function readFilmRollFolder(rollDir: string, folderName: string): Photo[] {
       id: `${folderName}/${file}`,
       src,
       thumbSrc: derivativeSrc(relPath, "thumb", src),
+      gridSrc: derivativeSrc(relPath, "grid", src),
       previewSrc: derivativeSrc(relPath, "preview", src),
       width,
       height,

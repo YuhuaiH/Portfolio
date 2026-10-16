@@ -65,6 +65,15 @@ export type ContentBlock =
       columns?: 1 | 2 | 3;
       images?: { src: string; alt: string; width: number; height: number }[];
     }
+  | {
+      // Every image in the entry's folder (except the cover) as the same
+      // compilation the Digital photos page uses (PhotoCompilation.tsx):
+      // justified rows at each piece's own shape, shuffled or in name
+      // order, with a full-screen viewer. "images" is filled in by
+      // workEntries.ts, like "collection".
+      type: "compilation";
+      images?: { src: string; alt: string; width: number; height: number }[];
+    }
   | { type: "spacer"; size?: "sm" | "md" | "lg" };
 
 const SITE_VARS: Record<string, string> = {

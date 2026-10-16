@@ -1,11 +1,6 @@
-[
-  { "type": "heading", "text": "About", "level": 1 },
-  { 
-    "type": "paragraph", 
-    "text": "Yuhuai is a lazy guy. He's a bit socially awkard, and enjoys doing weird stuff. \n Find him for doing photography, design, composing, and coding." 
-  },
-  {
-    "type": "paragraph",
-    "text": "For bookings and inquiries, reach out at [{{email}}](mailto:{{email}}) or @yuhuaih on Instagram."
-  }
-]
+{
+  "title": "Good morning/afternoon/evening/night, my name is Yuhuai Huang!",
+  "left": "I'm a creative technologist based in Shanghai and Pittsburgh. Driven by a dedication to creating innovative and meaningful experiences, I explore the intersections of games, interactive design, music, and visuals.",
+  "right": "It's hard to define what I'm doing because neither do I know my identity well enough. Whatever, if you find my works interesting or would like to chat, find me at my [Instagram](https://instagram.com/yuhuaih).",
+  "contact": "[{{email}}](mailto:{{email}}) · [@yuhuaih](https://instagram.com/yuhuaih)"
+}

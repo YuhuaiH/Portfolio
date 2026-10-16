@@ -84,27 +84,42 @@ const ROLL_GAP = 1.1;
 const BREATH_AMPLITUDE = 0.25;
 const CLICK_DRAG_THRESHOLD = 6;
 const DRAG_SCALE = 0.006;
-// Extending (selecting) stays slow and deliberate, ~2.5s to settle — the
-// camera is tracking the growing edge in a tight zoom the whole time, which
-// reads as plenty quick on its own.
-const PULL_EXTEND_LERP = 0.02;
-// Retracting (deselecting) has no such camera magnification — the camera
-// has already cut to the wide overview — so it needs its own faster pace,
-// ~1s to settle, to feel like it matches the extend rather than dragging.
-const PULL_RETRACT_LERP = 0.05;
+// All the *_LERP factors below are "fraction of the remaining distance
+// covered per 60fps frame", applied through damp() so they're frame-rate
+// independent: the motion takes the same time whether the page renders at
+// 120, 60 or 30fps. (Applied raw per frame, as they used to be, every
+// animation slowed down whenever the frame rate dipped — e.g. with the
+// space background sharing the GPU — which made the whole scene feel
+// sluggish.)
+//
+// Extending (selecting): ~1.2s to settle. Was 0.02 (~2.5s), which read as
+// slow rather than deliberate.
+const PULL_EXTEND_LERP = 0.045;
+// Retracting (deselecting) has no camera magnification to carry it — the
+// camera has already cut to the wide overview — so it runs a bit faster,
+// ~0.6s, to feel like it matches the extend rather than dragging.
+const PULL_RETRACT_LERP = 0.09;
 // How far a non-focused roll sinks to get out of the focused camera's much
 // tighter frustum — well clear of it even at the closest zoom (camZ ~3.1).
 const PARK_Y_OFFSET = -7;
 // Deliberately slower than PULL_RETRACT_LERP: on deselect, a parked
 // neighbor must still be out of the way for as long as the just-deselected
 // roll's strip is still retracting toward it, or the two overlap mid-glide.
-const PARK_LERP = 0.04;
+const PARK_LERP = 0.075;
 // Following the focused roll's growing edge is snappy and reactive...
-const CAMERA_FOCUS_LERP = 0.08;
+const CAMERA_FOCUS_LERP = 0.12;
 // ...but snapping straight to the wide overview target the instant you
 // deselect made the pan back feel abrupt — a much gentler ease here spreads
 // that big jump in target position/zoom out instead of lurching toward it.
-const CAMERA_OVERVIEW_LERP = 0.035;
+const CAMERA_OVERVIEW_LERP = 0.06;
+
+// Converts a per-60fps-frame lerp factor into the right factor for this
+// frame's actual delta, so motion speed doesn't depend on frame rate.
+// Delta is capped so a long stall (tab switch, GC pause) eases in instead
+// of teleporting.
+function damp(factor: number, delta: number) {
+  return 1 - Math.pow(1 - factor, Math.min(delta, 0.1) * 60);
+}
 // lookAt's Y is set to this ratio times the camera's current distance
 // (camZ) rather than a fixed world value, in both the overview and focus
 // branches below — since the screen-space offset of a z=0 object from
@@ -709,9 +724,9 @@ function RollGroup({ rs, focusedIndex }: { rs: RollState; focusedIndex: number |
   const isFocused = focusedIndex === rs.index;
   const parked = focusedIndex !== null && !isFocused;
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     const targetY = parked ? PARK_Y_OFFSET : 0;
-    yRef.current = THREE.MathUtils.lerp(yRef.current, targetY, PARK_LERP);
+    yRef.current = THREE.MathUtils.lerp(yRef.current, targetY, damp(PARK_LERP, delta));
     groupRef.current?.position.set(rs.baseX, yRef.current, 0);
   });
 
@@ -889,7 +904,7 @@ function SceneController({
     };
   }, [gl, camera, scene, raycaster, rollStates, onSelectRoll, onPhotoClick]);
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, delta) => {
     const idx = focusedIndexRef.current;
     for (const rs of rollStates) {
       const isFocused = idx === rs.index;
@@ -918,7 +933,7 @@ function SceneController({
       const lerpFactor = isFocused ? PULL_EXTEND_LERP : PULL_RETRACT_LERP;
       rs.displayPulledRef.current = snap
         ? target
-        : THREE.MathUtils.lerp(rs.displayPulledRef.current, target, lerpFactor);
+        : THREE.MathUtils.lerp(rs.displayPulledRef.current, target, damp(lerpFactor, delta));
 
       rs.clipPlane.constant = rs.baseX + rs.displayPulledRef.current;
     }
@@ -934,6 +949,9 @@ function SceneController({
     const aspect = size.width / Math.max(size.height, 1);
     const camZForHalfWidth = (halfWidth: number, minZ: number) =>
       Math.max(halfWidth / (Math.tan(vFov / 2) * Math.max(aspect, 0.001)), minZ);
+
+    const overviewK = damp(CAMERA_OVERVIEW_LERP, delta);
+    const focusK = damp(CAMERA_FOCUS_LERP, delta);
 
     if (idx === null) {
       const last = rollStates[rollStates.length - 1];
@@ -960,9 +978,9 @@ function SceneController({
       // down within the fixed-size box: more room above it (where it was
       // sitting almost flush against the tab pill), less below (where it
       // was floating in dead space before the footer).
-      camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetX, CAMERA_OVERVIEW_LERP);
-      camera.position.y = THREE.MathUtils.lerp(camera.position.y, 1.15, CAMERA_OVERVIEW_LERP);
-      camera.position.z = THREE.MathUtils.lerp(camera.position.z, camZ, CAMERA_OVERVIEW_LERP);
+      camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetX, overviewK);
+      camera.position.y = THREE.MathUtils.lerp(camera.position.y, 1.15, overviewK);
+      camera.position.z = THREE.MathUtils.lerp(camera.position.z, camZ, overviewK);
       camera.lookAt(targetX, CAMERA_PITCH_RATIO * camZ, 0);
     } else {
       const rs = rollStates[idx];
@@ -980,9 +998,9 @@ function SceneController({
       const midpointX = display / 2;
       const tipAnchoredX = display - halfWidth + 0.4;
       const targetX = rs.baseX + Math.max(midpointX, tipAnchoredX);
-      camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetX, CAMERA_FOCUS_LERP);
-      camera.position.y = THREE.MathUtils.lerp(camera.position.y, 0.75, CAMERA_FOCUS_LERP);
-      camera.position.z = THREE.MathUtils.lerp(camera.position.z, camZ, CAMERA_FOCUS_LERP);
+      camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetX, focusK);
+      camera.position.y = THREE.MathUtils.lerp(camera.position.y, 0.75, focusK);
+      camera.position.z = THREE.MathUtils.lerp(camera.position.z, camZ, focusK);
       camera.lookAt(targetX, CAMERA_PITCH_RATIO * camZ, 0);
     }
   });
@@ -1012,7 +1030,9 @@ export default function FilmScene({
       // heading, instead of visibly dropping into place over the first
       // second or so.
       camera={{ position: [initialWidth / 2, 1.15, 4.5 + initialWidth * 0.32], fov: 45 }}
-      dpr={[1, 2]}
+      // Capped at 1.5x (was 2x): on a 2x screen that's ~44% fewer pixels
+      // to shade every frame, with antialiasing hiding the difference.
+      dpr={[1, 1.5]}
       gl={{ antialias: true, alpha: true }}
       onCreated={({ gl }) => {
         gl.localClippingEnabled = true;

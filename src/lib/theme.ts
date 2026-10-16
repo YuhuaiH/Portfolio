@@ -13,7 +13,3 @@ export function hexToRgbTriplet(hex: string): string {
   const n = parseInt(hex.slice(1), 16);
   return `${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}`;
 }
-
-export function hexToRgba(hex: string, alpha: number): string {
-  return `rgba(${hexToRgbTriplet(hex)}, ${alpha})`;
-}

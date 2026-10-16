@@ -10,7 +10,7 @@ const MODAL_TRANSITION_MS = 220;
 // images.unoptimized is on (required for static export) — the
 // basePath-prefixing logic lives in the default loader, which
 // unoptimized mode bypasses entirely. Same fix as SiteHeader.tsx /
-// FilmScene.tsx / DigitalCityScene.tsx.
+// FilmScene.tsx.
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 export function formatDate(time: string) {
@@ -84,16 +84,6 @@ export default function PhotoInfoModal({
           {date} · {photo.type === "film" ? photo.filmRoll : "Digital"}
         </p>
         <div className="mt-5 flex items-center justify-center gap-4">
-          <a
-            href={`${BASE_PATH}${photo.src}`}
-            download
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="text-xs tracking-[0.15em] text-muted uppercase hover:text-accent-bright"
-          >
-            Full resolution
-          </a>
           <button
             onClick={handleClose}
             className="text-xs tracking-[0.15em] text-muted uppercase hover:text-accent-bright"

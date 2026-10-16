@@ -1,15 +1,18 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef } from "react";
-import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
-import { PerspectiveCamera, useTexture } from "@react-three/drei";
+import { useEffect, useMemo, useRef } from "react";
+import { useFrame, useLoader, useThree } from "@react-three/fiber";
+import { useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import { THEME } from "@/lib/theme";
+import { eyeState, setEyeReady } from "@/lib/eyeStore";
+
+export type { EyeReaction } from "@/lib/eyeStore";
 
 // next/image never applies basePath to a hardcoded src when
 // images.unoptimized is on (required for static export) — same fix as
-// SiteHeader.tsx / FilmScene.tsx / DigitalCityScene.tsx, needed here too
+// SiteHeader.tsx / FilmScene.tsx, needed here too
 // since these assets are fetched directly rather than through next/image.
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const MODEL_PATH = `${BASE_PATH}/models/eye/eye.fbx`;
@@ -31,8 +34,6 @@ const TEXTURES = {
 // 114 world units across. This brings the whole rig back down to roughly
 // unit scale so a normal camera distance frames it.
 const EYE_SCALE = 0.0075;
-const CAMERA_Z = 3;
-const CAMERA_FOV = 34;
 
 // How far (in degrees) the eye can rotate off dead-center before it's
 // clamped — real eyes swing a bit further side to side than up and down.
@@ -102,7 +103,6 @@ function focusPulseScale(elapsed: number): number {
 // snap to look toward — e.g. the corner the clicked card sits in — plus
 // whether the pupil should dilate. Passed down from EyeHero, which knows
 // about the click; EyeStage itself has no notion of navigation.
-export type EyeReaction = { dir: readonly [number, number]; dilate: boolean } | null;
 
 function hexToRgb(hex: string): [number, number, number] {
   const n = parseInt(hex.slice(1), 16);
@@ -312,50 +312,37 @@ function Eyeball({ pupilRef }: { pupilRef: React.RefObject<THREE.Mesh | null> })
   );
 }
 
+
 // Rotates the whole eyeball (sclera + iris together, as a real eye rotates
-// in its socket) to track the cursor anywhere on the page — or, while
-// `reaction` is set, snaps to look in a given direction and dilates the
-// pupil instead, as a startle response to a nav card being clicked.
-// `focusPulse`, bumped by a parent each time the cursor lands on something
-// interactable, plays the autofocus-rack pupil pulse defined above.
-function EyeRig({
-  reaction,
-  focusPulse,
-  onReady,
-}: {
-  reaction: EyeReaction;
-  focusPulse?: number;
-  onReady?: () => void;
-}) {
+// in its socket) to track the cursor anywhere on the page — or, while a
+// reaction is set (see eyeStore), snaps to look in a given direction and
+// dilates the pupil instead, as a startle response to a ticket being
+// clicked. Each focusPulse bump plays the autofocus-rack pupil pulse
+// defined above. All of it read from eyeStore, which the home page writes.
+function EyeRig() {
   const groupRef = useRef<THREE.Group>(null);
   const pupilRef = useRef<THREE.Mesh>(null);
   const pupilScaleRef = useRef(1);
-  const { gl } = useThree();
   const offsetRef = useRef({ dx: 0, dy: 0 });
   const targetQuatRef = useRef(new THREE.Quaternion());
   const eulerRef = useRef(new THREE.Euler(0, 0, 0, "YXZ"));
-  // Tracks which `focusPulse` value has already started its animation, and
-  // when (in clock.elapsedTime seconds) — so a change in the prop starts a
-  // fresh pulse exactly once, rather than replaying every frame the prop
-  // happens to still differ from some other stored value.
-  const pulseSeenRef = useRef(focusPulse ?? 0);
+  // Which focusPulse value has already started its animation, and when —
+  // so a bump starts a fresh pulse exactly once.
+  const pulseSeenRef = useRef(eyeState.focusPulse);
   const pulseStartRef = useRef<number | null>(null);
 
-  // EyeRig sits inside the Suspense boundary below (its child, Eyeball,
-  // is what actually suspends on the model/texture loads) — so this
-  // effect firing IS the "the eye actually has something to show now"
-  // signal, distinct from EyeStage's own mount, which happens well
-  // before the FBX/textures resolve. Lets a parent (EyeHero) sync its
-  // entrance transition to when the eye is genuinely ready instead of
-  // guessing at a fixed delay.
+  // EyeRig sits inside the Suspense boundary that waits on the model and
+  // textures — so this effect firing IS "the eye has something to show".
   useEffect(() => {
-    onReady?.();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setEyeReady();
   }, []);
 
+  // The cursor's offset from the eye's on-screen center (the hero's anchor
+  // box), anywhere on the page.
   useEffect(() => {
     function onMove(e: PointerEvent) {
-      const rect = gl.domElement.getBoundingClientRect();
+      const rect = eyeState.anchor?.getBoundingClientRect();
+      if (!rect) return;
       offsetRef.current = {
         dx: e.clientX - (rect.left + rect.width / 2),
         dy: e.clientY - (rect.top + rect.height / 2),
@@ -363,14 +350,15 @@ function EyeRig({
     }
     window.addEventListener("pointermove", onMove);
     return () => window.removeEventListener("pointermove", onMove);
-  }, [gl]);
+  }, []);
 
   useFrame((state) => {
     const group = groupRef.current;
     if (!group) return;
+    const reaction = eyeState.reaction;
 
-    if ((focusPulse ?? 0) !== pulseSeenRef.current) {
-      pulseSeenRef.current = focusPulse ?? 0;
+    if (eyeState.focusPulse !== pulseSeenRef.current) {
+      pulseSeenRef.current = eyeState.focusPulse;
       pulseStartRef.current = state.clock.elapsedTime;
     }
     let pulseScale = 1;
@@ -393,9 +381,8 @@ function EyeRig({
       yaw =
         THREE.MathUtils.clamp(dx / SENSITIVITY_PX, -1, 1) * THREE.MathUtils.degToRad(MAX_YAW_DEG);
       // Negated: the rig's natural rest orientation faces -Z (toward the
-      // camera on this side), so a positive X-rotation tilts that forward
-      // vector up rather than down — the opposite of the more common +Z
-      // convention pitch would otherwise assume.
+      // camera), so a positive X-rotation tilts that forward vector up
+      // rather than down.
       pitch =
         THREE.MathUtils.clamp(-dy / SENSITIVITY_PX, -1, 1) *
         THREE.MathUtils.degToRad(MAX_PITCH_DEG);
@@ -406,18 +393,10 @@ function EyeRig({
     group.quaternion.slerp(targetQuatRef.current, reaction ? REACTION_LERP : TRACK_LERP);
 
     // The click-reaction dilate wins outright over a still-playing focus
-    // pulse (rather than blending): `pulseScale` dips below 1 during its
-    // constrict beat, so max()-ing it against the dilate target would
-    // silently clip that dip to 1 whenever a dilate was also active, and
-    // multiplying the two would risk an oversized pupil on overlap. A
-    // click is a rarer, more deliberate event than a hover — simplest for
-    // it to just take over rather than mix.
+    // pulse (rather than blending) — a click is rarer and more deliberate
+    // than a hover, so it simply takes over.
     const targetPupilScale = reaction?.dilate ? PUPIL_DILATE_SCALE : pulseScale;
-    pupilScaleRef.current = THREE.MathUtils.lerp(
-      pupilScaleRef.current,
-      targetPupilScale,
-      PUPIL_LERP
-    );
+    pupilScaleRef.current = THREE.MathUtils.lerp(pupilScaleRef.current, targetPupilScale, PUPIL_LERP);
     pupilRef.current?.scale.setScalar(pupilScaleRef.current);
   });
 
@@ -428,102 +407,177 @@ function EyeRig({
   );
 }
 
-// The light in front of the eye — "tender and creepy". Tender: a warm,
-// rose-tinted candle glow with a wide, soft falloff, not a hard spot.
-// Creepy: it sits low and in front, shining up at the eye (the flashlight-
-// under-the-chin angle), and it never holds still — a slow breath every
-// ~6s with a faint, irregular candle waver on top, so the eye reads as lit
-// by something you can't see rather than by a studio light.
+// A soft round glow for the haze the eye sits in.
+function createHaloTexture() {
+  const size = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  g.addColorStop(0, "rgba(255,255,255,1)");
+  g.addColorStop(0.45, "rgba(255,255,255,0.35)");
+  g.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+  return new THREE.CanvasTexture(canvas);
+}
+
+// The eye's place in the background scene. Each frame it's put on the ray
+// through the hero's anchor box (eyeState.anchor), at whatever distance
+// makes it the same size on screen as that box — so it lines up exactly
+// with the DOM click target and the ticket ring above it, wherever the
+// background camera has drifted. It's oriented to face the camera, in the
+// same eye-local frame the model was originally lit and tuned in (camera
+// on the eye's -Z side).
 //
-// The camera is on -Z looking toward +Z (see EyeStage), so "in front" is
-// negative z. Physically based units: at ~2.3 from the eye, intensity ~4.5
-// lands near the strength of the existing key light.
+// Living in the scene rather than its own canvas, it gets the scene's
+// lighting for free: the canyon's warm point light far down the gorge is
+// directly behind it — the gold rim — and its own candle/key lights spill
+// onto the nearby rubble and dust. Fog gives it the same depth haze.
+//
+// Leaving the home page (eyeState.present → false) plays its exit: the eye
+// retreats down the canyon — receding, shrinking and sinking into the fog,
+// its lights going with it. Coming back, it rises out of the depths.
+const EYE_RADIUS = 0.98; // world units at EYE_SCALE — the sclera's front pole
+// Eye radius on screen relative to half the anchor box — matches how the
+// eye filled its box back when it had its own canvas.
+const EYE_FILL = 1.09;
+const RETREAT_DEPTH = 34; // how far down the canyon it goes when leaving
+const EMERGE_RATE = 1.7; // per-second easing toward present
+const RETREAT_RATE = 2.4; // retreating is a little quicker than emerging
+
+// Light intensities are physical (decay 2): roughly the old directional
+// strengths times distance². They're kept out of the eye's own group so
+// they're always in the scene (just at 0 while it's away) — lights being
+// added/removed changes every material's shader and forces a recompile
+// hitch, right in the middle of a page transition.
+const KEY_INTENSITY = 24;
+const FILL_INTENSITY = 4;
 const CANDLE_BASE = 4.5;
 
-function CandleLight() {
-  const lightRef = useRef<THREE.PointLight>(null);
+export function SceneEye() {
+  const eyeRef = useRef<THREE.Group>(null);
+  const lightsRef = useRef<THREE.Group>(null);
+  const keyRef = useRef<THREE.PointLight>(null);
+  const fillRef = useRef<THREE.PointLight>(null);
+  const candleRef = useRef<THREE.PointLight>(null);
+  const haloRef = useRef<THREE.SpriteMaterial>(null);
+  const progress = useRef(0);
+  const lastRect = useRef<{ cx: number; cy: number; w: number } | null>(null);
+  const { gl } = useThree();
+  const haloTexture = useMemo(() => createHaloTexture(), []);
+  const tmp = useMemo(
+    () => ({
+      ndc: new THREE.Vector3(),
+      dir: new THREE.Vector3(),
+      // Turns the camera's facing around, so the eye's -Z faces the camera.
+      flip: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI),
+    }),
+    []
+  );
   const still = useMemo(
-    () =>
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     []
   );
 
-  useFrame(({ clock }) => {
-    const light = lightRef.current;
-    if (!light || still) return;
-    const t = clock.elapsedTime;
-    const breath = 0.5 + 0.5 * Math.sin((t * Math.PI * 2) / 6.2); // 0..1, slow
-    // Three incommensurate sines: an uneven waver that never visibly loops.
-    const waver = Math.sin(t * 7.3) * 0.5 + Math.sin(t * 11.9 + 1.3) * 0.3 + Math.sin(t * 3.1 + 0.7) * 0.2;
-    light.intensity = CANDLE_BASE * (0.78 + 0.32 * breath + 0.05 * waver);
+  useFrame(({ camera, clock }, delta) => {
+    const eye = eyeRef.current;
+    const lights = lightsRef.current;
+    if (!eye || !lights) return;
+
+    // Presence: ease toward 1 (here) or 0 (gone), frame-rate independent.
+    const target = eyeState.present && eyeState.ready ? 1 : 0;
+    const rate = target > progress.current ? EMERGE_RATE : RETREAT_RATE;
+    progress.current += (target - progress.current) * (1 - Math.exp(-Math.min(delta, 0.1) * rate));
+    if (target === 0 && progress.current < 0.003) progress.current = 0;
+    if (still) progress.current = target;
+    const p = progress.current;
+
+    // Where the hero wants it. Once the hero unmounts (a subpage), its last
+    // known position is kept so the retreat starts from where the eye was.
+    const anchor = eyeState.anchor;
+    if (anchor) {
+      const r = anchor.getBoundingClientRect();
+      if (r.width > 0) lastRect.current = { cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width };
+    }
+    const rect = lastRect.current;
+    eye.visible = p > 0 && rect !== null;
+    const lightScale = eye.visible ? p : 0;
+    if (keyRef.current) keyRef.current.intensity = KEY_INTENSITY * lightScale;
+    if (fillRef.current) fillRef.current.intensity = FILL_INTENSITY * lightScale;
+    if (candleRef.current) {
+      const t = clock.elapsedTime;
+      // The candle: a slow breath every ~6s plus a faint, never-looping
+      // waver — tender, and a little wrong.
+      const breath = 0.5 + 0.5 * Math.sin((t * Math.PI * 2) / 6.2);
+      const waver = Math.sin(t * 7.3) * 0.5 + Math.sin(t * 11.9 + 1.3) * 0.3 + Math.sin(t * 3.1 + 0.7) * 0.2;
+      candleRef.current.intensity =
+        CANDLE_BASE * (still ? 1 : 0.78 + 0.32 * breath + 0.05 * waver) * lightScale;
+      if (haloRef.current) haloRef.current.opacity = 0.2 * p * (0.85 + 0.15 * breath);
+    }
+    if (!eye.visible || !rect) return;
+
+    // Screen → ray through the anchor's center, in canvas coordinates.
+    const canvasRect = gl.domElement.getBoundingClientRect();
+    const cam = camera as THREE.PerspectiveCamera;
+    tmp.ndc
+      .set(
+        ((rect.cx - canvasRect.left) / canvasRect.width) * 2 - 1,
+        -((rect.cy - canvasRect.top) / canvasRect.height) * 2 + 1,
+        0.5
+      )
+      .unproject(cam);
+    tmp.dir.copy(tmp.ndc).sub(cam.position).normalize();
+
+    // Distance at which the eye's radius projects to the box's radius.
+    const tanHalf = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
+    const radiusPx = (rect.w / 2) * EYE_FILL;
+    const distance = (EYE_RADIUS * (canvasRect.height / 2)) / (radiusPx * tanHalf);
+    // Retreat: further down the canyon as p falls, eased so it lingers a
+    // beat before being pulled away.
+    const away = 1 - p;
+    const depth = distance + away * away * RETREAT_DEPTH;
+
+    eye.position.copy(cam.position).addScaledVector(tmp.dir, depth);
+    eye.quaternion.copy(cam.quaternion).multiply(tmp.flip);
+    eye.scale.setScalar(Math.max(p, 0.001));
+    lights.position.copy(eye.position);
+    lights.quaternion.copy(eye.quaternion);
+    lights.scale.copy(eye.scale);
   });
 
   return (
-    <pointLight
-      ref={lightRef}
-      position={[0.25, -1.1, -2.1]}
-      color="#ffb59e"
-      intensity={CANDLE_BASE}
-      distance={7}
-      decay={2}
-    />
-  );
-}
-
-// A single large eyeball, built from the real-world eye asset in
-// public/models/eye, that rotates to stare at the cursor anywhere on the
-// page. `reaction`, set by a parent that knows about clicks elsewhere on
-// the page (e.g. EyeHero's nav cards), overrides that cursor-follow with a
-// snap-and-dilate response instead. `focusPulse`, bumped by a parent each
-// time the cursor lands on an interactable element, plays a quick
-// autofocus-style pupil pulse. `onReady` fires once the model and textures
-// have actually loaded and the eye has something to show.
-export default function EyeStage({
-  reaction = null,
-  focusPulse,
-  onReady,
-}: {
-  reaction?: EyeReaction;
-  focusPulse?: number;
-  onReady?: () => void;
-}) {
-  return (
-    <Canvas dpr={[1, 2]} gl={{ antialias: true, alpha: true }}>
-      {/* The model's iris aperture opens toward -Z in its own raw
-          coordinates (the sclera shell's opposite pole bulges out further,
-          so rotating the mesh around to face a default +Z camera lets that
-          far pole occlude the iris). Simpler to view it from its own
-          natural side instead: camera sits on -Z, rotated 180° to still
-          look back in toward the origin. */}
-      <PerspectiveCamera
-        makeDefault
-        position={[0, 0, -CAMERA_Z]}
-        rotation={[0, Math.PI, 0]}
-        fov={CAMERA_FOV}
-      />
-      {/* Lit to match SpaceBackground.tsx rather than as a studio product
-          shot, so the eye sits *in* that scene instead of on top of it:
-          - low ambient, so the shadow side actually falls off into the dark
-            the way the rocks around it do (0.55 used to flatten it out);
-          - a warm rim from behind and below — the same canyon light the
-            background's rocks are lit by, wrapping the eye's silhouette
-            in the same gold;
-          - a soft, slightly warm key from the upper left for form;
-          - the same dim cool fill the background uses for its shadows;
-          - a small point light kept only for the wet catchlight;
-          - CandleLight: the breathing rose glow from low in front (see
-            above), plus a little more ambient and key than before, which
-            left the eye's face too dark. */}
-      <ambientLight intensity={0.22} />
-      <directionalLight position={[0.4, -1.6, 3.5]} intensity={2.2} color="#d6b27a" />
-      <directionalLight position={[-2, 3, -4]} intensity={0.85} color="#efe4cf" />
-      <CandleLight />
-      <directionalLight position={[2.5, 2, -1]} intensity={0.18} color="#7f8794" />
-      <pointLight position={[-0.6, 0.8, -2.4]} intensity={0.45} distance={6} />
-      <Suspense fallback={null}>
-        <EyeRig reaction={reaction} focusPulse={focusPulse} onReady={onReady} />
-      </Suspense>
-    </Canvas>
+    <>
+      <group ref={eyeRef} visible={false}>
+        <EyeRig />
+        {/* The warm haze the eye sits in — behind it (eye-local +Z is away
+            from the camera), additive, breathing with the candle. */}
+        {haloTexture && (
+          <sprite position={[0, 0, 1.6]} scale={6.5}>
+            <spriteMaterial
+              ref={haloRef}
+              map={haloTexture}
+              color="#d9c08a"
+              transparent
+              opacity={0}
+              depthWrite={false}
+              blending={THREE.AdditiveBlending}
+            />
+          </sprite>
+        )}
+      </group>
+      {/* The eye's own lights, following it (see the note above on why
+          they're not inside its group). Eye-local coordinates, camera on
+          the -Z side: a soft warm key from the upper left, a gentle front
+          fill standing in for the ambient it used to have, and the candle —
+          low and in front, shining up at it, the creepy under-light. The
+          gold rim comes from the scene's own canyon light behind it. */}
+      <group ref={lightsRef}>
+        <pointLight ref={keyRef} position={[-2, 3, -4]} color="#efe4cf" intensity={0} distance={10} decay={2} />
+        <pointLight ref={fillRef} position={[0, 0.5, -5]} color="#ffffff" intensity={0} distance={9} decay={2} />
+        <pointLight ref={candleRef} position={[0.25, -1.1, -2.1]} color="#ffb59e" intensity={0} distance={7} decay={2} />
+      </group>
+    </>
   );
 }

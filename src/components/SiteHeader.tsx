@@ -10,7 +10,7 @@ import { usePresentationMode } from "@/lib/usePresentationMode";
 // next/image never applies basePath to a hardcoded src when
 // images.unoptimized is on (required for static export), and this URL is
 // used as a CSS mask anyway, which nothing would prefix — so prefix it by
-// hand, same as FilmScene.tsx / DigitalCityScene.tsx.
+// hand, same as FilmScene.tsx.
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 // logo-mask.svg, not the original logo file: generated from it so the
 // letters' dark inner detail survives as a partly-transparent cut (an alpha
@@ -81,7 +81,10 @@ export default function SiteHeader() {
   if (!SHOW_LOGO && pathname === "/") return null;
 
   return (
-    <header className="flex flex-col items-center gap-3 px-6 py-5 text-center sm:py-6">
+    // page-fade-in: the header only mounts when leaving the home page (it
+    // renders nothing on "/"), and it sits outside PageTransition — without
+    // its own fade it popped in instantly while the page itself faded.
+    <header className="page-fade-in flex flex-col items-center gap-3 px-6 py-5 text-center sm:py-6">
       {SHOW_LOGO && (
         <Link
           href="/"

@@ -44,7 +44,8 @@ export default function WorkDetail({
   // An entry whose page *is* the work — a flip-book or a collection wall —
   // gets the full page width: the work is the point, not a column of text.
   const showcase =
-    entry.blocks?.some((b) => b.type === "book" || b.type === "collection") ?? false;
+    entry.blocks?.some((b) => b.type === "book" || b.type === "collection" || b.type === "compilation") ??
+    false;
   const blocks = entry.blocks ?? [];
   const lead = blocks[0]?.type === "video" ? blocks[0] : null;
   const body = lead ? blocks.slice(1) : blocks;

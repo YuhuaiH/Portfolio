@@ -1,12 +1,13 @@
 {
   "title": "The Tale of Oath",
   "order": 3,
-  "role": "Gameplay Programmer, VFX & Music",
+  "role": "Gameplay Programmer, Technical Artist & Music",
   "summary": "A third-person, magic-based action-adventure set in Rifts England — a level design vertical slice from CMU's Entertainment Technology Center, now on Steam.",
   "tags": [
     "Game",
     "Level Design",
-    "ETC"
+    "Magic",
+    "Action-Adventure"
   ],
   "links": [
     {

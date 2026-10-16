@@ -1,0 +1,14 @@
+{
+  "title": "Commission Works",
+  "order": 3,
+  "summary": "Commissioned graphic design work.",
+  "tags": [
+    "Commission",
+    "Graphic Design"
+  ],
+  "blocks": [
+    {
+      "type": "compilation"
+    }
+  ]
+}

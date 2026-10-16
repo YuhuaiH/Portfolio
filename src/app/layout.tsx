@@ -7,8 +7,6 @@ import SceneHeader from "@/components/SceneHeader";
 import PresentationMain from "@/components/PresentationMain";
 import { FilmFocusProvider } from "@/components/FilmFocusProvider";
 import { NavigationPendingProvider } from "@/components/NavigationPendingProvider";
-import CollageBackground from "@/components/CollageBackground";
-import WoodBackground from "@/components/WoodBackground";
 import SpaceBackground from "@/components/SpaceBackground";
 import { getPhotos, getFilmRolls } from "@/lib/photos";
 import site from "@/data/site.json";
@@ -26,32 +24,12 @@ import "./globals.css";
 // or a Tailwind arbitrary value: rgba(var(--accent-bright-rgb), 0.4).
 const THEME_STYLE = `:root{--background:${THEME.background};--foreground:${THEME.foreground};--muted:${THEME.muted};--accent:${THEME.accent};--accent-bright:${THEME.accentBright};--accent-bright-rgb:${hexToRgbTriplet(THEME.accentBright)};}`;
 
-// One on/off switch per decorative background layer, in one place, instead
-// of commenting an import and its JSX in and out every time one gets
-// tried/dropped/brought back — which is what the last several rounds of
-// "get rid of X for now" / "bring Y back" actually were. Flip a value here,
-// nothing else needs touching.
-//
+// The site-wide background. The old vintage layers (wood, collage photo,
+// fog, light leak, scratches, film grain, vignette) were retired and their
+// code removed — see git history if one is ever wanted back. Set false to
+// fall back to the theme's flat --background color.
 const LAYERS = {
   space: true, // SpaceBackground.tsx — the 3D asteroid canyon / gold dust scene
-  wood: false, // WoodBackground.tsx — the true backmost layer, static wood grain
-  collage: false, // CollageBackground.tsx — the static forest/stream photo
-  collageClouds: false, // the three drifting wind*.png clouds inside it
-  fog: false,
-  lightLeak: false,
-  scratches: false, // the diagonal streak texture
-  // These two are plain CSS (body::before/::after in globals.css) rather
-  // than React-rendered, so they're gated by a class on <html> instead
-  // (.no-grain / .no-vignette) — same switch, different mechanism.
-  grain: false, // the page-wide flickering film grain
-  vignette: false, // the darkened viewport edges
-  // Paused for performance: when false, every *background* animation holds
-  // still — the page-wide grain flicker and the logo grain (via .bg-paused
-  // in globals.css), plus the collage backdrop's rotation and its
-  // per-frame SVG warp (see CollageBackground's `animate` prop). The
-  // layers themselves still render, just as a still frame. Flip back to
-  // true to bring the motion back.
-  animate: false,
 };
 
 const cardo = Cardo({
@@ -158,27 +136,13 @@ export default function RootLayout({
         spaceGrotesk.variable,
         "h-full antialiased",
         LAYERS.space ? "space-bg" : "",
-        LAYERS.animate ? "" : "bg-paused",
-        LAYERS.grain ? "" : "no-grain",
-        LAYERS.vignette ? "" : "no-vignette",
       ].join(" ")}
     >
       <head>
         <style dangerouslySetInnerHTML={{ __html: THEME_STYLE }} />
       </head>
       <body className="min-h-full flex flex-col">
-        {/* Site-wide vintage texture layers (see globals.css for each) — one
-            DOM node per effect rather than cramming more into body's own
-            ::before (grain) / ::after (vignette), so each stays independently
-            tunable. aria-hidden + pointer-events:none: purely decorative,
-            never part of the page's content or interaction. Each one's
-            on/off state lives in the LAYERS config above. */}
         {LAYERS.space && <SpaceBackground />}
-        {LAYERS.wood && <WoodBackground />}
-        {LAYERS.collage && <CollageBackground showClouds={LAYERS.collageClouds} animate={LAYERS.animate} />}
-        {LAYERS.fog && <div aria-hidden className="fog" />}
-        {LAYERS.lightLeak && <div aria-hidden className="light-leak" />}
-        {LAYERS.scratches && <div aria-hidden className="scratches" />}
         {/* Wraps SiteHeader/SceneHeader (the nav triggers) and PageTransition
             (the consumer) together — see NavigationPendingProvider.tsx for
             why a Link's onClick alone isn't enough signal on its own. */}

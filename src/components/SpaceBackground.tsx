@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { Suspense, useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { SceneEye } from "./EyeStage";
+import { useEyeWanted } from "@/lib/eyeStore";
 
 // A site-wide deep-space backdrop: two canyon walls of asteroid rubble
 // receding toward a faint warm glow on the horizon, gold dust and
@@ -415,11 +417,23 @@ function HorizonGlow() {
   );
 }
 
+// Scrolling flies the camera forward down the canyon — deeper the further
+// down the page you go, and back out as you scroll up (or when a new page
+// opens, which resets the scroll to the top). Measured in absolute pixels
+// rather than as a fraction of the page, so the same scroll moves the same
+// distance on a long page and a short one; capped so a very long page
+// can't fly you through the rubble at the far end.
+const START_Z = 8;
+const DEPTH_PER_PX = 0.006; // world units per scrolled pixel
+const MAX_DEPTH = 9.5; // camera stops at z = -1.5, just short of the debris drifting from z = -2
+
 // Parallax: the camera eases a little way toward the cursor and back, plus
-// a slow idle bob so the scene never sits fully still. Listens on window
-// because the canvas itself is pointer-events:none (it's behind the page).
+// a slow idle bob so the scene never sits fully still, plus the scroll
+// dolly above. Listens on window because the canvas itself is
+// pointer-events:none (it's behind the page).
 function CameraRig({ still }: { still: boolean }) {
   const pointer = useRef({ x: 0, y: 0 });
+  const depth = useRef(0);
 
   useEffect(() => {
     if (still) return;
@@ -427,8 +441,16 @@ function CameraRig({ still }: { still: boolean }) {
       pointer.current.x = (e.clientX / window.innerWidth) * 2 - 1;
       pointer.current.y = (e.clientY / window.innerHeight) * 2 - 1;
     };
+    const onScroll = () => {
+      depth.current = Math.min(window.scrollY * DEPTH_PER_PX, MAX_DEPTH);
+    };
+    onScroll();
     window.addEventListener("pointermove", onMove, { passive: true });
-    return () => window.removeEventListener("pointermove", onMove);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("scroll", onScroll);
+    };
   }, [still]);
 
   useFrame(({ clock, camera }, dt) => {
@@ -439,13 +461,23 @@ function CameraRig({ still }: { still: boolean }) {
     const k = 1 - Math.exp(-dt * 1.5);
     camera.position.x += (tx - camera.position.x) * k;
     camera.position.y += (ty - camera.position.y) * k;
-    camera.lookAt(0, -0.3, -40);
+    // The dolly eases a little slower than the parallax, so a quick flick
+    // of the wheel reads as a glide forward rather than a jolt.
+    const kz = 1 - Math.exp(-dt * 2.2);
+    camera.position.z += (START_Z - depth.current - camera.position.z) * kz;
+    // Look a fixed distance ahead, so the view down the canyon keeps the
+    // same angle the whole way in.
+    camera.lookAt(0, -0.3, camera.position.z - 48);
   });
 
   return null;
 }
 
 export default function SpaceBackground({ animate = true }: { animate?: boolean }) {
+  // The home page's eye lives in this scene (see SceneEye in EyeStage.tsx)
+  // so it shares its lighting and fog. Only mounted once the home page has
+  // asked for it, so the model never loads on a visit that skips "/".
+  const eyeWanted = useEyeWanted();
   // prefers-reduced-motion (or LAYERS.animate=false) renders one still
   // frame and stops — the scene stays, the per-frame cost doesn't.
   const still = useMemo(
@@ -460,9 +492,11 @@ export default function SpaceBackground({ animate = true }: { animate?: boolean 
     <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 bg-black">
       <Canvas
         dpr={[1, 1.5]}
-        frameloop={still ? "demand" : "always"}
+        // The eye tracks the cursor and breathes, so it keeps the loop
+        // running even when the background itself is held still.
+        frameloop={still && !eyeWanted ? "demand" : "always"}
         gl={{ antialias: true, alpha: false, powerPreference: "low-power" }}
-        camera={{ position: [0, 0.3, 8], fov: 55, near: 0.1, far: 120 }}
+        camera={{ position: [0, 0.3, START_Z], fov: 55, near: 0.1, far: 120 }}
         onCreated={({ camera }) => camera.lookAt(0, -0.3, -40)}
       >
         <color attach="background" args={["#040403"]} />
@@ -480,6 +514,11 @@ export default function SpaceBackground({ animate = true }: { animate?: boolean 
         <Sparkles />
         <Bokeh />
         <CameraRig still={still} />
+        {eyeWanted && (
+          <Suspense fallback={null}>
+            <SceneEye />
+          </Suspense>
+        )}
       </Canvas>
     </div>
   );

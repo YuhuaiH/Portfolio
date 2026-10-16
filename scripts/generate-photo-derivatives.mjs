@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 // Generates downscaled webp derivatives of every photo under public/photos/
-// into public/photos-cache/{thumb,preview}/, mirroring the source folder
-// structure. Run before dev/build (see predev/prebuild in package.json) so
-// the site never has to ship full-resolution originals for the film-strip
-// thumbnails or the detail-modal preview — those only get loaded for a
-// dedicated full-resolution view or download. Skips files whose derivative
+// into public/photos-cache/{thumb,grid,preview}/, mirroring the source
+// folder structure — these are what the site actually shows. Run before
+// dev/build (see predev/prebuild in package.json), after compress-photos.mjs
+// has brought any new photo down to web size. Skips files whose derivative
 // is already newer than the source, so repeat runs are cheap.
 import fs from "node:fs";
 import path from "node:path";
@@ -15,12 +14,24 @@ const PHOTOS_DIR = path.join(ROOT, "public", "photos");
 const CACHE_DIR = path.join(ROOT, "public", "photos-cache");
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
 
-// thumb: the film-strip frame textures — small on screen even at full zoom.
+// thumb: the film-strip frame textures — small on screen even at full zoom
+// (a frame is ~160 CSS px wide at the closest zoom, ~320 device px on a 2x
+// screen), so 560px is still sharp. Was 1000px: all 51 frames load at once,
+// and the oversized textures cost ~4x the download, decode and GPU upload.
+// (Changing a size here needs public/photos-cache/thumb/ deleted once —
+// existing derivatives are only regenerated when their source changes.)
 // preview: the detail-modal image and the digital scene's billboard —
 // shown much larger, so it gets more headroom.
 const VARIANTS = [
-  { name: "thumb", maxSize: 1000, quality: 75 },
-  { name: "preview", maxSize: 2000, quality: 82 },
+  { name: "thumb", maxSize: 560, quality: 74 },
+  // grid: the Digital compilation's justified rows — up to ~640 CSS px
+  // wide per photo, so 1200px stays sharp on a 2x screen. Only loads as a
+  // photo scrolls into view.
+  { name: "grid", maxSize: 1200, quality: 78, only: "digital" },
+  // preview is now the largest view anyone gets (there's no "full
+  // resolution" link any more), so it gets real quality headroom: q90 kept
+  // film grain measurably closer to the original than q82 did.
+  { name: "preview", maxSize: 2000, quality: 90 },
 ];
 
 function walk(dir, relBase = "") {
@@ -69,6 +80,8 @@ async function main() {
     const relWebp = rel.replace(/\.[^.]+$/, ".webp");
 
     for (const variant of VARIANTS) {
+      // A variant with `only` is generated for that top-level folder alone.
+      if (variant.only && rel.split(path.sep)[0] !== variant.only) continue;
       const destPath = path.join(CACHE_DIR, variant.name, relWebp);
       const didGenerate = await generateVariant(
         srcPath,
@@ -82,7 +95,25 @@ async function main() {
     }
   }
 
-  console.log(`Photo derivatives: ${generated} generated, ${upToDate} up to date.`);
+  // Prune derivatives whose source photo is gone (renamed or removed) —
+  // otherwise they'd linger in public/photos-cache/ and ship with every
+  // deploy, unseen.
+  const sources = new Set(relFiles.map((rel) => rel.replace(/\.[^.]+$/, ".webp")));
+  let pruned = 0;
+  for (const variant of VARIANTS) {
+    const dir = path.join(CACHE_DIR, variant.name);
+    if (!fs.existsSync(dir)) continue;
+    for (const rel of walk(dir)) {
+      if (!sources.has(rel)) {
+        fs.unlinkSync(path.join(dir, rel));
+        pruned++;
+      }
+    }
+  }
+
+  console.log(
+    `Photo derivatives: ${generated} generated, ${upToDate} up to date${pruned ? `, ${pruned} stale removed` : ""}.`
+  );
 }
 
 main().catch((err) => {

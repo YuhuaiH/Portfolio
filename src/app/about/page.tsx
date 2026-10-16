@@ -1,21 +1,16 @@
 import type { Metadata } from "next";
 import site from "@/data/site.json";
-import aboutBlocks from "@/data/about.json";
-import ContentBlocks from "@/components/ContentBlocks";
+import about from "@/data/about.json";
 import AboutHero from "@/components/AboutHero";
-import type { ContentBlock } from "@/lib/content";
 
 export const metadata: Metadata = {
   title: `About — ${site.name}`,
 };
 
+// The introduction lives in src/data/about.json, split to fit the page's
+// symmetry: "title" (centered under the portrait), "left" and "right" (the
+// two mirrored halves either side of the center line), and "contact" (the
+// last line). All support [label](url) links and {{email}} (see content.tsx).
 export default function About() {
-  return (
-    <section className="px-6 py-12 text-center sm:px-12">
-      <AboutHero />
-      <div className="mx-auto mt-12 max-w-xl sm:mt-16">
-        <ContentBlocks blocks={aboutBlocks as ContentBlock[]} />
-      </div>
-    </section>
-  );
+  return <AboutHero title={about.title} left={about.left} right={about.right} contact={about.contact} />;
 }

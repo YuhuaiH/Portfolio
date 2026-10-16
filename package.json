@@ -3,12 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "node scripts/generate-photo-derivatives.mjs && node scripts/generate-cover-colors.mjs",
+    "predev": "node scripts/compress-photos.mjs && node scripts/generate-photo-derivatives.mjs && node scripts/generate-cover-colors.mjs",
     "dev": "next dev",
-    "prebuild": "node scripts/generate-photo-derivatives.mjs && node scripts/generate-cover-colors.mjs",
+    "prebuild": "node scripts/compress-photos.mjs && node scripts/generate-photo-derivatives.mjs && node scripts/generate-cover-colors.mjs",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "compress-photos": "node scripts/compress-photos.mjs && node scripts/generate-photo-derivatives.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",

@@ -8,7 +8,7 @@ import {
   type CSSProperties,
 } from "react";
 import { useRouter } from "next/navigation";
-import EyeStage, { type EyeReaction } from "@/components/EyeStage";
+import { eyeState, setEyePresent, useEyeReady, type EyeReaction } from "@/lib/eyeStore";
 import { useNavigationPending } from "@/components/NavigationPendingProvider";
 import { useAutoplayGate } from "@/lib/usePresentationMode";
 import {
@@ -49,7 +49,7 @@ const SLOTS: readonly (readonly [number, number])[] = [
 ];
 
 // A slot's pixel offset, plus the same direction squashed into [-1, 1]
-// per axis — the range EyeStage's look-at reaction expects.
+// per axis — the range the eye's look-at reaction expects.
 function slot(i: number) {
   const [px, py] = SLOTS[i % SLOTS.length];
   return { px, py, x: px / COLUMN_X, y: py / BASE_Y };
@@ -219,7 +219,7 @@ function TicketCard({
   );
 }
 
-// The home page's hero: a large 3D eyeball (EyeStage) alone in the middle
+// The home page's hero: a large 3D eyeball (SceneEye, drawn by the background scene) alone in the middle
 // of the page, staring at the cursor. Clicking it pops the site's tickets
 // out of it one by one — each springs from the eye's center out to its own
 // spot on a ring around it (see .eye-ticket in globals.css for the motion
@@ -233,10 +233,17 @@ export default function EyeHero({ tickets }: { tickets: Ticket[] }) {
     href: string;
     dir: readonly [number, number];
   } | null>(null);
-  const [eyeReady, setEyeReady] = useState(false);
+  // The eye itself lives in the site-wide background scene (SceneEye in
+  // EyeStage.tsx), not in this component — eyeStore is how this hero tells
+  // it where to sit and what to do, and hears when its model has loaded.
+  const modelReady = useEyeReady();
+  const [timedOut, setTimedOut] = useState(false);
+  const eyeReady = modelReady || timedOut;
+  // The box the 3D eye lines itself up behind, every frame.
+  const eyeBoxRef = useRef<HTMLDivElement>(null);
   const [entered, setEntered] = useState(false);
   const [open, setOpen] = useState(false);
-  // Bumped on every ticket pointer-enter and eye click — EyeStage watches
+  // Bumped on every ticket pointer-enter and eye click — the eye watches
   // this counter (not a boolean) so the same trigger twice in a row still
   // retriggers the pulse.
   const [focusPulse, setFocusPulse] = useState(0);
@@ -264,9 +271,25 @@ export default function EyeHero({ tickets }: { tickets: Ticket[] }) {
   }, []);
 
   useEffect(() => {
-    const fallback = setTimeout(() => setEyeReady(true), READY_FALLBACK_MS);
+    const fallback = setTimeout(() => setTimedOut(true), READY_FALLBACK_MS);
     return () => clearTimeout(fallback);
   }, []);
+
+  // Call the eye up out of the canyon while this page is open; send it
+  // back down when it closes (a nav link, the back button…).
+  useEffect(() => {
+    eyeState.anchor = eyeBoxRef.current;
+    setEyePresent(true);
+    return () => {
+      setEyePresent(false);
+      eyeState.anchor = null;
+      eyeState.reaction = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    eyeState.focusPulse = focusPulse;
+  }, [focusPulse]);
 
   useEffect(() => {
     if (!eyeReady) return;
@@ -295,6 +318,16 @@ export default function EyeHero({ tickets }: { tickets: Ticket[] }) {
     return () => clearTimeout(timer);
   }, [entered, autoplay]);
 
+  // Preload every destination as soon as the tickets come out — the
+  // tickets aren't <Link>s, so Next won't prefetch them on its own. By the
+  // time a ticket is clicked its page is usually ready, so the swap happens
+  // the moment the exit animation ends instead of waiting on the network
+  // (or, in dev, on an on-demand compile).
+  useEffect(() => {
+    if (!open) return;
+    for (const ticket of tickets) router.prefetch(ticket.href);
+  }, [open, tickets, router]);
+
   const toggleOpen = useCallback(() => {
     setFocusPulse((n) => n + 1);
     setOpen((wasOpen) => {
@@ -309,11 +342,16 @@ export default function EyeHero({ tickets }: { tickets: Ticket[] }) {
     (href: string, dir: readonly [number, number]) => {
       if (pending) return; // already on the way somewhere — ignore extra clicks
       setPending({ href, dir });
-      // startNavigating() fires alongside the actual router.push — not
-      // immediately on click — so the page-wide fade doesn't compete with
-      // the eye's own look-and-dilate reaction for those first 380ms.
+      // The page starts its exit right at the click (PageTransition zooms
+      // the hero toward the eye as it fades), playing *together* with the
+      // eye's look-and-dilate reaction instead of after it — so nothing
+      // sits frozen for the first 380ms. The route push still waits for
+      // the reaction, so the eye visibly responds before the view dives in.
+      startNavigating();
       setTimeout(() => {
-        startNavigating();
+        // The reaction has played — now the eye starts its retreat down
+        // the canyon, carrying on behind the new page as it arrives.
+        setEyePresent(false);
         // Recording flags (?present=1, ?autoplay=1) only carry forward
         // when this navigation is itself part of an autoplay run.
         router.push(autoplay ? `${href}${window.location.search}` : href);
@@ -341,9 +379,11 @@ export default function EyeHero({ tickets }: { tickets: Ticket[] }) {
     };
   }, [autoplay, autoplayStarted, entered, tickets, handleNavigate, toggleOpen]);
 
-  const reaction: EyeReaction = pending
-    ? { dir: pending.dir, dilate: true }
-    : null;
+  // A clicked ticket: the eye snaps to look at it and its pupil dilates.
+  useEffect(() => {
+    const reaction: EyeReaction = pending ? { dir: pending.dir, dilate: true } : null;
+    eyeState.reaction = reaction;
+  }, [pending]);
 
   return (
     <div
@@ -357,43 +397,17 @@ export default function EyeHero({ tickets }: { tickets: Ticket[] }) {
           Press space to start
         </div>
       )}
-      <div className="relative z-10 h-52 w-52 shrink-0 sm:h-60 sm:w-60 lg:absolute lg:top-[40%] lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2">
-        {/* A soft warm halo bleeding out well past the eye's own bounds —
-            a separate layer behind the canvas, since blur+opacity must
-            never touch the R3F container (see below). */}
-        <div
-          aria-hidden
-          className="animate-eye-glow pointer-events-none absolute -inset-10 rounded-full blur-3xl sm:-inset-16"
-          style={{
-            background:
-              // Same pale gold as SpaceBackground's light, fainter and wider
-              // than before — a haze the eye sits in, not a halo drawn round it.
-              "radial-gradient(circle, rgba(217,192,138,0.2) 0%, rgba(217,192,138,0.07) 45%, rgba(217,192,138,0) 72%)",
-          }}
-        />
-        {/* The fade lives on this inner div, one level below the sizing/
-            centering div above — never on an ancestor of the R3F Canvas.
-            R3F measures its container's size via getBoundingClientRect,
-            which reflects ancestor CSS transforms; a scale transition here
-            previously got baked into the canvas as a permanently
-            undersized, off-center buffer. Opacity alone doesn't affect
-            layout geometry, so it can't cause the same bug. */}
-        <div
-          className={`h-full w-full transition-opacity duration-700 ease-out ${
-            entered ? "opacity-100" : "opacity-0"
-          }`}
-        >
-          <EyeStage
-            reaction={reaction}
-            focusPulse={focusPulse}
-            onReady={() => setEyeReady(true)}
-          />
-        </div>
-        {/* Candle spill: the rose light from EyeStage's CandleLight (low and
-            in front of the eye) catching the air below it — a soft haze
-            *over* the canvas, screen-blended so it only ever lightens, and
-            breathing on the same slow ~6s rhythm as the light itself. A
-            sibling of the canvas wrapper, never its ancestor (see above). */}
+      <div
+        ref={eyeBoxRef}
+        className="relative z-10 h-52 w-52 shrink-0 sm:h-60 sm:w-60 lg:absolute lg:top-[40%] lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2"
+      >
+        {/* No eye in here any more — it's drawn by the background scene,
+            lined up behind this box (see eyeStore). The halo it used to
+            have moved into that scene too, behind the eye. */}
+        {/* Candle spill: the rose candle light (low and in front of the
+            eye) catching the air below it — a soft haze over the scene,
+            screen-blended so it only ever lightens, breathing on the same
+            slow ~6s rhythm as the light itself. */}
         <div
           aria-hidden
           className={`candle-spill pointer-events-none absolute -inset-x-16 top-[42%] -bottom-24 mix-blend-screen blur-2xl transition-opacity duration-700 ${

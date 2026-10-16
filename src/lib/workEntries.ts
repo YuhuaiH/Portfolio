@@ -118,9 +118,16 @@ function readEntry(section: EntrySectionKey, folder: string): Loaded {
         };
       }
       case "collection":
+      case "compilation":
         return {
           ...block,
-          images: artwork.map((file) => ({ src: resolve(file), alt: titleFromFilename(file), ...size(file) })),
+          images: artwork.map((file, i) => {
+            // A number-only filename ("03.jpg") has no words to make a name
+            // from — call it by the entry and its number instead.
+            const named = titleFromFilename(file);
+            const alt = named === file ? `${raw.title} · ${String(i + 1).padStart(2, "0")}` : named;
+            return { src: resolve(file), alt, ...size(file) };
+          }),
         };
       case "video":
         return { ...block, src: resolve(block.src), poster: block.poster && resolve(block.poster) };

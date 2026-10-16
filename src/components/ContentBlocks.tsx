@@ -4,12 +4,13 @@ import { renderInlineText } from "@/lib/content";
 import LoopVideo from "./LoopVideo";
 import FlipBook from "./FlipBook";
 import CollectionGrid from "./CollectionGrid";
+import PhotoCompilation from "./PhotoCompilation";
 
 // next/image never applies basePath to a hardcoded src when
 // images.unoptimized is on (required for static export) — the
 // basePath-prefixing logic lives in the default loader, which unoptimized
 // mode bypasses entirely. Same fix as SiteHeader.tsx / FilmScene.tsx /
-// DigitalCityScene.tsx.
+// EyeStage.tsx.
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 const HEADING_CLASSES: Record<1 | 2 | 3, string> = {
@@ -248,6 +249,22 @@ function Block({ block, variant }: { block: ContentBlock; variant: Variant }) {
         <CollectionGrid
           columns={block.columns}
           images={(block.images ?? []).map((image) => ({ ...image, src: `${BASE_PATH}${image.src}` }))}
+        />
+      );
+
+    case "compilation":
+      // PhotoCompilation adds BASE_PATH itself. Work images have no
+      // separate grid/preview sizes, so the file itself serves as both.
+      return (
+        <PhotoCompilation
+          photos={(block.images ?? []).map((image) => ({
+            id: image.src,
+            gridSrc: image.src,
+            previewSrc: image.src,
+            width: image.width,
+            height: image.height,
+            name: image.alt,
+          }))}
         />
       );
 

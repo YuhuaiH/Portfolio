@@ -45,7 +45,9 @@ export default function SceneHeader({
   const focused = active === "film" && focusedIndex !== null ? filmRolls[focusedIndex] : null;
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col items-center gap-2 px-6 pt-3 text-center sm:px-12 sm:pt-4">
+    // page-fade-in: mounts when arriving on Photography, outside
+    // PageTransition — fades in with the page instead of popping.
+    <div className="page-fade-in pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col items-center gap-2 px-6 pt-3 text-center sm:px-12 sm:pt-4">
       <div className="pointer-events-auto">
         {focused ? (
           <>
@@ -75,8 +77,7 @@ export default function SceneHeader({
           <>
             <h2 className="font-heading text-lg tracking-wide italic">Digital</h2>
             <p className="text-xs tracking-[0.15em] text-muted uppercase">
-              {digitalCount} photo{digitalCount === 1 ? "" : "s"} · click the billboard for
-              details
+              {digitalCount} photo{digitalCount === 1 ? "" : "s"} · click any photo to view
             </p>
           </>
         )}
