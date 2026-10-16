@@ -103,6 +103,17 @@ const OG_IMAGE = {
 
 export const metadata: Metadata = {
   metadataBase: new URL(new URL(site.url).origin),
+  // The eyeball favicon, rendered from the 3D eye's own textures (sclera
+  // veins pushed bloodier). Plain files in public/ with the basePath spelled
+  // out — like OG_IMAGE — rather than app/icon.png, so the links can't lose
+  // the /Portfolio prefix under static export.
+  icons: {
+    icon: [
+      { url: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/favicon.ico`, sizes: "16x16 32x32 48x48" },
+      { url: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/icon.png`, type: "image/png", sizes: "192x192" },
+    ],
+    apple: { url: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/apple-icon.png`, sizes: "180x180" },
+  },
   title: TITLE,
   description: site.description,
   openGraph: {
