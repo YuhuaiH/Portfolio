@@ -178,9 +178,13 @@ export default function AboutHero({
 
   return (
     <div className="mx-auto w-full max-w-4xl px-6 py-10 sm:px-12">
-      <div className="relative mx-auto flex max-w-sm flex-col items-center gap-6 sm:h-[480px] sm:max-w-3xl">
+      {/* Phones: the portrait, then the four roles as a 2×2 grid under it —
+          the same arrangement as the desktop corners, just compacted (they
+          used to stack into one long column of four lines). From sm up the
+          roles sit at the real corners around the portrait. */}
+      <div className="relative mx-auto grid max-w-xs grid-cols-2 justify-items-center gap-x-6 gap-y-1 sm:block sm:h-[480px] sm:max-w-3xl">
         <div
-          className={`relative h-72 w-72 shrink-0 transition-[opacity,scale] duration-1000 ease-out sm:absolute sm:top-1/2 sm:left-1/2 sm:h-[25rem] sm:w-[25rem] sm:-translate-x-1/2 sm:-translate-y-1/2 ${
+          className={`relative col-span-2 mb-4 h-72 w-72 shrink-0 transition-[opacity,scale] sm:mb-0 duration-1000 ease-out sm:absolute sm:top-1/2 sm:left-1/2 sm:h-[25rem] sm:w-[25rem] sm:-translate-x-1/2 sm:-translate-y-1/2 ${
             entered ? "scale-100 opacity-100" : "scale-95 opacity-0"
           }`}
         >
@@ -197,7 +201,7 @@ export default function AboutHero({
               transitionDelay: `${300 + i * 110}ms`,
             }}
           >
-            <span className="font-heading text-xl text-foreground italic sm:text-2xl">{role}</span>
+            <span className="font-heading text-lg text-foreground italic sm:text-2xl">{role}</span>
           </div>
         ))}
       </div>

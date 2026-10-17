@@ -66,14 +66,15 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 // What a shared link shows (Discord, iMessage, Slack, X…): the Open Graph
-// and Twitter-card tags below, plus the preview image generated at build
-// time by src/app/og.png/route.tsx. metadataBase is the deploy origin, so
-// the image path (which carries the /Portfolio basePath itself) resolves
-// to the absolute URL link-preview crawlers require. Every page inherits
-// these; pages only override their own <title>.
+// and Twitter-card tags below, plus the preview image public/og.jpg (made
+// from the Commission Works piece 04.jpg, fitted to 1200×630).
+// metadataBase is the deploy origin, so the image path (which carries the
+// /Portfolio basePath itself) resolves to the absolute URL link-preview
+// crawlers require. Every page inherits these; pages only override their
+// own <title>.
 const TITLE = `${site.fullName} — ${site.role}`;
 const OG_IMAGE = {
-  url: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/og.png`,
+  url: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/og.jpg`,
   width: 1200,
   height: 630,
   alt: TITLE,

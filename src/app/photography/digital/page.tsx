@@ -29,7 +29,10 @@ export default function DigitalPage() {
     }));
 
   return (
-    <section className="mx-auto w-full max-w-6xl px-4 pt-24 pb-12 sm:px-8 sm:pt-28">
+    // Top padding clears the Film/Digital header floating over the page
+    // (SceneHeader, absolutely positioned) — it's taller on phones, where
+    // its line of text wraps, so the shuffle toggle used to slide under it.
+    <section className="mx-auto w-full max-w-6xl px-4 pt-40 pb-12 sm:px-8 sm:pt-36">
       <PhotoCompilation photos={photos} />
     </section>
   );

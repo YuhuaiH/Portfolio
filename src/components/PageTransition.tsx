@@ -1,8 +1,23 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useContext, useEffect, useRef, useState, type CSSProperties } from "react";
+import { LayoutRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { useNavigationPending } from "./NavigationPendingProvider";
+
+// Keeps showing the page it first mounted with, even after the route
+// changes. In the App Router, a layout's `children` is not the page itself
+// but a router element that renders whatever route is *current* — so
+// merely holding on to the old `children` during the exit didn't keep the
+// old page on screen: the new one rendered straight into it mid-fade (it's
+// prefetched, so usually instantly), got faded out with the exit, then
+// played its entrance — a visible blink. Freezing the router context the
+// page reads from is what actually holds the outgoing page until the swap.
+function FrozenRouter({ children }: { children: React.ReactNode }) {
+  const context = useContext(LayoutRouterContext);
+  const [frozen] = useState(context);
+  return <LayoutRouterContext.Provider value={frozen}>{children}</LayoutRouterContext.Provider>;
+}
 
 // Next's App Router swaps route content instantly — this choreographs the
 // swap instead, in three phases:
@@ -47,18 +62,14 @@ export default function PageTransition({ children }: { children: React.ReactNode
   const pathname = usePathname();
   const { pending } = useNavigationPending();
   const reduced = useReducedMotion();
-  const [displayChildren, setDisplayChildren] = useState(children);
+  // Which route is on screen. Bumping it remounts FrozenRouter, re-freezing
+  // it on the route that's current by then — that's the swap.
+  const [shownKey, setShownKey] = useState(pathname);
   const [phase, setPhase] = useState<Phase>("idle");
   // Whether the page now leaving is the home page — picks the exit style.
   const [fromHome, setFromHome] = useState(pathname === "/");
   const prevPathnameRef = useRef(pathname);
   const exitStartRef = useRef<number | null>(null);
-  // The latest children, for the delayed swap below to pick up (the route
-  // can re-render while the exit is still playing).
-  const childrenRef = useRef(children);
-  useEffect(() => {
-    childrenRef.current = children;
-  }, [children]);
 
   function beginExit() {
     if (exitStartRef.current !== null) return;
@@ -72,11 +83,7 @@ export default function PageTransition({ children }: { children: React.ReactNode
   }, [pending]);
 
   useEffect(() => {
-    if (prevPathnameRef.current === pathname) {
-      // Same route, just updated content (e.g. new props) — swap right away.
-      setDisplayChildren(children);
-      return;
-    }
+    if (prevPathnameRef.current === pathname) return;
     // The route resolved. Start the exit now if nothing marked it pending
     // (e.g. browser back/forward), then swap once it has fully played.
     beginExit();
@@ -88,7 +95,7 @@ export default function PageTransition({ children }: { children: React.ReactNode
     timers.push(
       setTimeout(() => {
         exitStartRef.current = null;
-        setDisplayChildren(childrenRef.current);
+        setShownKey(pathname);
         window.scrollTo(0, 0);
         setPhase("enter-from");
         // Two frames so the browser paints the "from" pose before the
@@ -140,7 +147,7 @@ export default function PageTransition({ children }: { children: React.ReactNode
 
   return (
     <div style={style} className={phase === "idle" ? "" : "will-change-[opacity,transform]"}>
-      {displayChildren}
+      <FrozenRouter key={shownKey}>{children}</FrozenRouter>
     </div>
   );
 }
